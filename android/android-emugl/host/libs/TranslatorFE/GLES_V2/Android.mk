@@ -13,7 +13,7 @@ host_common_SRC_FILES += ANGLEShaderParser.cpp
 
 ### GLES_V2 host implementation (On top of OpenGL) ########################
 $(call emugl-begin-shared-library,lib$(BUILD_TARGET_SUFFIX)GLES_V2_translatorFE)
-$(call emugl-import, libGLcommon)
+$(call emugl-import, libGLcommonFE)
 
 LOCAL_SRC_FILES := $(host_common_SRC_FILES)
 

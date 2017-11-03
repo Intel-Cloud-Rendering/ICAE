@@ -9,6 +9,6 @@ host_common_SRC_FILES := \
 
 ### GLES_CM host implementation (On top of OpenGL) ########################
 $(call emugl-begin-shared-library,lib$(BUILD_TARGET_SUFFIX)GLES_CM_translatorFE)
-$(call emugl-import,libGLcommon)
+$(call emugl-import,libGLcommonFE)
 LOCAL_SRC_FILES := $(host_common_SRC_FILES)
 $(call emugl-end-module)

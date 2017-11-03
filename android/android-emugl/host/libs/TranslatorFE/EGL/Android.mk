@@ -38,7 +38,7 @@ host_common_SRC_FILES :=      \
 
 ### EGL host implementation ########################
 $(call emugl-begin-shared-library,lib$(BUILD_TARGET_SUFFIX)EGL_translatorFE)
-$(call emugl-import,libGLcommon)
+$(call emugl-import,libGLcommonFE)
 
 LOCAL_LDLIBS += $(host_common_LDLIBS)
 LOCAL_SRC_FILES := $(host_common_SRC_FILES)
