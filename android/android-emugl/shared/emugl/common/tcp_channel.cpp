@@ -3,6 +3,7 @@
 #include "android/utils/sockets.h"
 #include "android/utils/ipaddr.h"
 
+#include <assert.h>
 #include <stddef.h>
 #include <string.h>
 #include <stdio.h>
@@ -40,6 +41,11 @@ void TcpChannel::stop() {
 }
 
 int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
+    if (mSockFd < 0) {
+        assert(false);
+        return -1;
+    }
+
     int writePos = 0;
     int nLeft = wantBufLen;
     while (nLeft > 0) {
@@ -61,6 +67,11 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
 }
 
 int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
+    if (mSockFd < 0) {
+        assert(false);
+        return -1;
+    }
+
     int totalLen = 0;
     while ((totalLen < wantBufLen) && (!mStop)) {
         int ret = socket_recv(mSockFd, (buf + totalLen), wantBufLen - totalLen);

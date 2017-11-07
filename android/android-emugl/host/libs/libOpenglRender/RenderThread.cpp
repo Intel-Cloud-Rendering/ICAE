@@ -71,19 +71,24 @@ intptr_t RenderThread::main() {
     // Add Tcp Channel for comunication
     const char* render_svr_hostname = getenv("render_svr_hostname");
     if (!render_svr_hostname) {
-        fprintf(stderr, "Cannot find render server hostname\n");
-        return 0;
+        fprintf(stdout, "Cannot find render server hostname\n");
+        render_svr_hostname = "localhost";
     }
     const char* render_svr_port = getenv("render_svr_port");
     if (!render_svr_port) {
-        fprintf(stderr, "Cannot find render server port\n");
-        return 0;
+        fprintf(stdout, "Cannot find render server port\n");
+        render_svr_port = "23432";
     }
     TcpChannel tcpChannel(render_svr_hostname, atoi(render_svr_port));
-    bool ret = tcpChannel.start();
-    assert(!ret);
-    if (!ret) {
-        return 0;
+    TcpChannel *tcpChannelPtr = nullptr;
+    const char* render_client = getenv("render_client");
+    if (render_client) {
+        bool ret = tcpChannel.start();
+        assert(!ret);
+        if (!ret) {
+            return 0;
+        }
+        tcpChannelPtr = &tcpChannel;
     }
 
     // |flags| used to have something, now they're not used.
@@ -189,7 +194,7 @@ intptr_t RenderThread::main() {
             // contexts.
             FrameBuffer::getFB()->lockContextStructureRead();
             size_t last = tInfo.m_glDec.decode(
-                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, &tcpChannel);
+                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, tcpChannelPtr);
             if (last > 0) {
                 progress = true;
                 readBuf.consume(last);
@@ -200,7 +205,7 @@ intptr_t RenderThread::main() {
             // decoder
             //
             last = tInfo.m_gl2Dec.decode(readBuf.buf(), readBuf.validData(),
-                                         &stream, &checksumCalc, &tcpChannel);
+                                         &stream, &checksumCalc, tcpChannelPtr);
             FrameBuffer::getFB()->unlockContextStructureRead();
 
             if (last > 0) {
@@ -213,7 +218,7 @@ intptr_t RenderThread::main() {
             // renderControl decoder
             //
             last = tInfo.m_rcDec.decode(readBuf.buf(), readBuf.validData(),
-                                        &stream, &checksumCalc, &tcpChannel);
+                                        &stream, &checksumCalc, tcpChannelPtr);
             if (last > 0) {
                 readBuf.consume(last);
                 progress = true;
