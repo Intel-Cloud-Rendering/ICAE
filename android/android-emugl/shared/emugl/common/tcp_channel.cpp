@@ -10,7 +10,7 @@
 
 namespace emugl {
 
-TcpChannel::TcpChannel(char *hostName, uint16_t port) {
+TcpChannel::TcpChannel(const char *hostName, int port) {
     strcpy(mSockIP, hostName);
     mSockPort = port;
     mSockFd   = -1;

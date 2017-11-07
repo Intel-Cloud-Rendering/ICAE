@@ -34,6 +34,8 @@
 #define EMUGL_DEBUG_LEVEL 0
 #include "emugl/common/debug.h"
 
+#include "emugl/common/tcp_channel.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -63,6 +65,24 @@ intptr_t RenderThread::main() {
 
     uint32_t flags = 0;
     if (stream.read(&flags, sizeof(flags)) != sizeof(flags)) {
+        return 0;
+    }
+
+    // Add Tcp Channel for comunication
+    const char* render_svr_hostname = getenv("render_svr_hostname");
+    if (!render_svr_hostname) {
+        fprintf(stderr, "Cannot find render server hostname\n");
+        return 0;
+    }
+    const char* render_svr_port = getenv("render_svr_port");
+    if (!render_svr_port) {
+        fprintf(stderr, "Cannot find render server port\n");
+        return 0;
+    }
+    TcpChannel tcpChannel(render_svr_hostname, atoi(render_svr_port));
+    bool ret = tcpChannel.start();
+    assert(!ret);
+    if (!ret) {
         return 0;
     }
 
@@ -169,7 +189,7 @@ intptr_t RenderThread::main() {
             // contexts.
             FrameBuffer::getFB()->lockContextStructureRead();
             size_t last = tInfo.m_glDec.decode(
-                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc);
+                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, &tcpChannel);
             if (last > 0) {
                 progress = true;
                 readBuf.consume(last);
@@ -180,7 +200,7 @@ intptr_t RenderThread::main() {
             // decoder
             //
             last = tInfo.m_gl2Dec.decode(readBuf.buf(), readBuf.validData(),
-                                         &stream, &checksumCalc);
+                                         &stream, &checksumCalc, &tcpChannel);
             FrameBuffer::getFB()->unlockContextStructureRead();
 
             if (last > 0) {
@@ -193,7 +213,7 @@ intptr_t RenderThread::main() {
             // renderControl decoder
             //
             last = tInfo.m_rcDec.decode(readBuf.buf(), readBuf.validData(),
-                                        &stream, &checksumCalc);
+                                        &stream, &checksumCalc, &tcpChannel);
             if (last > 0) {
                 readBuf.consume(last);
                 progress = true;

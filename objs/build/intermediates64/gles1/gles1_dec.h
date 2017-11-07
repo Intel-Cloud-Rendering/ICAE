@@ -10,10 +10,11 @@
 
 
 #include "emugl/common/logging.h"
+#include "emugl/common/tcp_channel.h"
 
 struct gles1_decoder_context_t : public gles1_server_context_t {
 
-	size_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc);
+	size_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc, emugl::TcpChannel *tcpChannel);
 
 };
 

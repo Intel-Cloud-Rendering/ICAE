@@ -10,7 +10,7 @@ namespace emugl {
 
 class TcpChannel {
 public:
-    TcpChannel(char *hostName, uint16_t port);
+    TcpChannel(const char *hostName, int port);
     ~TcpChannel();
 
     bool start();

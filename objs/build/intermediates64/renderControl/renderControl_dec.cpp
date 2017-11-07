@@ -43,7 +43,7 @@ void outputRcDec() {
     }
 }
 
-size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc) {
+size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, TcpChannel *tcpChannel) {
 	if (len < 8) return 0; 
 #ifdef CHECK_GL_ERRORS
 	char lastCall[256] = {0};
