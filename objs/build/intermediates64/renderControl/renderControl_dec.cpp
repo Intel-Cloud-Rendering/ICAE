@@ -94,7 +94,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcGetRendererVersion");
             break;
@@ -126,7 +126,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcGetEGLVersion");
             break;
@@ -156,7 +156,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcQueryEGLString");
             break;
@@ -186,7 +186,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcGetGLString");
             break;
@@ -214,7 +214,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcGetNumConfigs");
             break;
@@ -243,7 +243,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcGetConfigs");
             break;
@@ -275,7 +275,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcChooseConfig");
             break;
@@ -300,7 +300,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcGetFBParam");
             break;
@@ -327,7 +327,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcCreateContext");
             break;
@@ -365,7 +365,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcCreateWindowSurface");
             break;
@@ -403,7 +403,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcCreateColorBuffer");
             break;
@@ -462,7 +462,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcFlushWindowColorBuffer");
             break;
@@ -489,7 +489,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcMakeCurrent");
             break;
@@ -560,7 +560,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcColorBufferCacheFlush");
             break;
@@ -594,7 +594,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcReadColorBuffer");
             break;
@@ -627,7 +627,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcUpdateColorBuffer");
             break;
@@ -652,7 +652,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcOpenColorBuffer2");
             break;
@@ -679,7 +679,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcCreateClientImage");
             break;
@@ -704,7 +704,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcDestroyClientImage");
             break;
@@ -752,7 +752,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcCreateSyncKHR");
             break;
@@ -779,7 +779,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcClientWaitSyncKHR");
             break;
@@ -815,7 +815,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcDestroySyncKHR");
             break;
@@ -858,7 +858,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcUpdateColorBufferDMA");
             break;
@@ -882,7 +882,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
             if (useChecksum) {
                 ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
             }
-            int flushSize = stream->flush();
+            int flushSize __attribute__((unused)) = stream->flush();
             assert(((size_t)flushSize) == totalTmpSize);
             SET_LASTCALL("rcCreateColorBufferDMA");
             break;

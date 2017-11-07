@@ -2,6 +2,7 @@
 
 #include "android/utils/sockets.h"
 #include "android/utils/ipaddr.h"
+#include "android/emulation/VmLock.h"
 
 #include <assert.h>
 #include <stddef.h>
@@ -49,7 +50,12 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
     int writePos = 0;
     int nLeft = wantBufLen;
     while (nLeft > 0) {
-        int ret = socket_send(mSockFd, buf + writePos, nLeft);
+        int ret;
+        {
+            android::ScopedVmUnlock unlockBql;
+            ret = socket_send(mSockFd, buf + writePos, nLeft);
+        }
+
         if (ret == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
@@ -74,7 +80,12 @@ int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
 
     int totalLen = 0;
     while ((totalLen < wantBufLen) && (!mStop)) {
-        int ret = socket_recv(mSockFd, (buf + totalLen), wantBufLen - totalLen);
+        int ret;
+        {
+            android::ScopedVmUnlock unlockBql;
+            ret = socket_recv(mSockFd, (buf + totalLen), wantBufLen - totalLen);
+        }
+
         if (ret == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue;
