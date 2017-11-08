@@ -27,21 +27,10 @@ typedef unsigned int tsize_t; // Target "size_t", which is 32-bit for now. It ma
 #else
 #  define SET_LASTCALL(name)
 #endif
-using namespace emugl;
-
-#define gles1_ARR_NUM (OP_last - OP_glAlphaFunc)
-int64_t gles1Dec[gles1_ARR_NUM] = {0};
-static int gles1CodeCnt = 0;
-void outputGles1Dec() {
-    if (gles1CodeCnt >= 100) {
-        printf("GLES1: ");
-        for (int i = 0; i < gles1_ARR_NUM; i++) {
-            printf("%d:%ld ", i, gles1Dec[i]);
-        }
-        printf("\n");
-        gles1CodeCnt = 0;
-    }
+static inline bool isValidRcCode(int opCode){
+    return ((opCode >= OP_glAlphaFunc) && (opCode < OP_last));
 }
+using namespace emugl;
 
 size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, TcpChannel *tcpChannel) {
 	if (len < 8) return 0; 
@@ -56,12 +45,11 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 		uint32_t opcode = *(uint32_t *)ptr;   
 		int32_t packetLen = *(int32_t *)(ptr + 4);
 		if (end - ptr < packetLen) return ptr - (unsigned char*)buf;
-        
-        if ((opcode >= OP_glAlphaFunc) && (opcode <= OP_last)) {
-            gles1Dec[opcode - OP_glAlphaFunc]++;
-            gles1CodeCnt++;
-            outputGles1Dec();
-        }
+		if (tcpChannel != nullptr) {
+			if (isValidRcCode(opcode)) {
+				tcpChannel->sndBufUntil(ptr, packetLen);
+			}
+		}
 		switch(opcode) {
 		case OP_glAlphaFunc: {
 			GLenum var_func = Unpack<GLenum,uint32_t>(ptr + 8);
@@ -226,6 +214,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_eqn;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_eqn(&tmpBuf[0], size_eqn);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -234,6 +226,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetClipPlanef(0x%08x %p(%u) )\n", stream, var_pname, (GLfloat*)(outptr_eqn.get()), size_eqn);
 			this->glGetClipPlanef(var_pname, (GLfloat*)(outptr_eqn.get()));
 			outptr_eqn.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -251,6 +245,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -259,6 +257,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetFloatv(0x%08x %p(%u) )\n", stream, var_pname, (GLfloat*)(outptr_params.get()), size_params);
 			this->glGetFloatv(var_pname, (GLfloat*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -277,6 +277,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -285,6 +289,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetLightfv(0x%08x 0x%08x %p(%u) )\n", stream, var_light, var_pname, (GLfloat*)(outptr_params.get()), size_params);
 			this->glGetLightfv(var_light, var_pname, (GLfloat*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -303,6 +309,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -311,6 +321,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetMaterialfv(0x%08x 0x%08x %p(%u) )\n", stream, var_face, var_pname, (GLfloat*)(outptr_params.get()), size_params);
 			this->glGetMaterialfv(var_face, var_pname, (GLfloat*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -329,6 +341,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -337,6 +353,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexEnvfv(0x%08x 0x%08x %p(%u) )\n", stream, var_env, var_pname, (GLfloat*)(outptr_params.get()), size_params);
 			this->glGetTexEnvfv(var_env, var_pname, (GLfloat*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -355,6 +373,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -363,6 +385,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexParameterfv(0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_pname, (GLfloat*)(outptr_params.get()), size_params);
 			this->glGetTexParameterfv(var_target, var_pname, (GLfloat*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1418,6 +1442,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1426,6 +1454,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetBooleanv(0x%08x %p(%u) )\n", stream, var_pname, (GLboolean*)(outptr_params.get()), size_params);
 			this->glGetBooleanv(var_pname, (GLboolean*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1444,6 +1474,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1452,6 +1486,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetBufferParameteriv(0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetBufferParameteriv(var_target, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1486,6 +1522,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_buffers;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_buffers(&tmpBuf[0], size_buffers);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1494,6 +1534,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGenBuffers(%d %p(%u) )\n", stream, var_n, (GLuint*)(outptr_buffers.get()), size_buffers);
 			this->glGenBuffers(var_n, (GLuint*)(outptr_buffers.get()));
 			outptr_buffers.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1511,6 +1553,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_textures;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_textures(&tmpBuf[0], size_textures);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1519,6 +1565,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGenTextures(%d %p(%u) )\n", stream, var_n, (GLuint*)(outptr_textures.get()), size_textures);
 			this->glGenTextures(var_n, (GLuint*)(outptr_textures.get()));
 			outptr_textures.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1534,12 +1582,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLenum);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glGetError\n", err);
 		#endif
 			DEBUG("gles1(%p): glGetError()\n", stream);
 			*(GLenum *)(&tmpBuf[0]) = 			this->glGetError();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1557,6 +1611,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1565,6 +1623,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetFixedv(0x%08x %p(%u) )\n", stream, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetFixedv(var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1582,6 +1642,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1590,6 +1654,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetIntegerv(0x%08x %p(%u) )\n", stream, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetIntegerv(var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1608,6 +1674,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1616,6 +1686,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetLightxv(0x%08x 0x%08x %p(%u) )\n", stream, var_light, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetLightxv(var_light, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1634,6 +1706,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1642,6 +1718,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetMaterialxv(0x%08x 0x%08x %p(%u) )\n", stream, var_face, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetMaterialxv(var_face, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1692,6 +1770,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1700,6 +1782,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexEnviv(0x%08x 0x%08x %p(%u) )\n", stream, var_env, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetTexEnviv(var_env, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1718,6 +1802,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1726,6 +1814,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexEnvxv(0x%08x 0x%08x %p(%u) )\n", stream, var_env, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetTexEnvxv(var_env, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1744,6 +1834,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1752,6 +1846,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexParameteriv(0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetTexParameteriv(var_target, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1770,6 +1866,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -1778,6 +1878,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexParameterxv(0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetTexParameterxv(var_target, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1810,12 +1912,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsBuffer\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsBuffer(%u )\n", stream, var_buffer);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsBuffer(var_buffer);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1832,12 +1940,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsEnabled\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsEnabled(0x%08x )\n", stream, var_cap);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsEnabled(var_cap);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -1854,12 +1968,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsTexture\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsTexture(%u )\n", stream, var_texture);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsTexture(var_texture);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -2258,6 +2378,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_pixels;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_pixels(&tmpBuf[0], size_pixels);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -2266,6 +2390,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glReadPixels(%d %d %d %d 0x%08x 0x%08x %p(%u) )\n", stream, var_x, var_y, var_width, var_height, var_format, var_type, (GLvoid*)(outptr_pixels.get()), size_pixels);
 			this->glReadPixels(var_x, var_y, var_width, var_height, var_format, var_type, (GLvoid*)(outptr_pixels.get()));
 			outptr_pixels.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3012,6 +3138,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_formats;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_formats(&tmpBuf[0], size_formats);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3020,6 +3150,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetCompressedTextureFormats(%d %p(%u) )\n", stream, var_count, (GLint*)(outptr_formats.get()), size_formats);
 			this->glGetCompressedTextureFormats(this, var_count, (GLint*)(outptr_formats.get()));
 			outptr_formats.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3035,12 +3167,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(int);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glFinishRoundTrip\n", err);
 		#endif
 			DEBUG("gles1(%p): glFinishRoundTrip()\n", stream);
 			*(int *)(&tmpBuf[0]) = 			this->glFinishRoundTrip(this);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3449,6 +3587,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_eqn;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_eqn(&tmpBuf[0], size_eqn);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3457,6 +3599,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetClipPlanexOES(0x%08x %p(%u) )\n", stream, var_pname, (GLfixed*)(outptr_eqn.get()), size_eqn);
 			this->glGetClipPlanexOES(var_pname, (GLfixed*)(outptr_eqn.get()));
 			outptr_eqn.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3474,6 +3618,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_eqn;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_eqn(&tmpBuf[0], size_eqn);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3482,6 +3630,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetClipPlanex(0x%08x %p(%u) )\n", stream, var_pname, (GLfixed*)(outptr_eqn.get()), size_eqn);
 			this->glGetClipPlanex(var_pname, (GLfixed*)(outptr_eqn.get()));
 			outptr_eqn.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3499,6 +3649,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3507,6 +3661,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetFixedvOES(0x%08x %p(%u) )\n", stream, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetFixedvOES(var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3525,6 +3681,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3533,6 +3693,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetLightxvOES(0x%08x 0x%08x %p(%u) )\n", stream, var_light, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetLightxvOES(var_light, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3551,6 +3713,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3559,6 +3725,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetMaterialxvOES(0x%08x 0x%08x %p(%u) )\n", stream, var_face, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetMaterialxvOES(var_face, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3577,6 +3745,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3585,6 +3757,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexEnvxvOES(0x%08x 0x%08x %p(%u) )\n", stream, var_env, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetTexEnvxvOES(var_env, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -3603,6 +3777,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -3611,6 +3789,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetTexParameterxvOES(0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_pname, (GLfixed*)(outptr_params.get()), size_params);
 			this->glGetTexParameterxvOES(var_target, var_pname, (GLfixed*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4035,12 +4215,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsRenderbufferOES\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsRenderbufferOES(%u )\n", stream, var_renderbuffer);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsRenderbufferOES(var_renderbuffer);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4091,6 +4277,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_renderbuffers;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_renderbuffers(&tmpBuf[0], size_renderbuffers);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -4099,6 +4289,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGenRenderbuffersOES(%d %p(%u) )\n", stream, var_n, (GLuint*)(outptr_renderbuffers.get()), size_renderbuffers);
 			this->glGenRenderbuffersOES(var_n, (GLuint*)(outptr_renderbuffers.get()));
 			outptr_renderbuffers.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4135,6 +4327,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -4143,6 +4339,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetRenderbufferParameterivOES(0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetRenderbufferParameterivOES(var_target, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4159,12 +4357,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsFramebufferOES\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsFramebufferOES(%u )\n", stream, var_framebuffer);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsFramebufferOES(var_framebuffer);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4215,6 +4419,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_framebuffers;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_framebuffers(&tmpBuf[0], size_framebuffers);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -4223,6 +4431,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGenFramebuffersOES(%d %p(%u) )\n", stream, var_n, (GLuint*)(outptr_framebuffers.get()), size_framebuffers);
 			this->glGenFramebuffersOES(var_n, (GLuint*)(outptr_framebuffers.get()));
 			outptr_framebuffers.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4239,12 +4449,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLenum);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glCheckFramebufferStatusOES\n", err);
 		#endif
 			DEBUG("gles1(%p): glCheckFramebufferStatusOES(0x%08x )\n", stream, var_target);
 			*(GLenum *)(&tmpBuf[0]) = 			this->glCheckFramebufferStatusOES(var_target);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4301,6 +4517,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -4309,6 +4529,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetFramebufferAttachmentParameterivOES(0x%08x 0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_attachment, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetFramebufferAttachmentParameterivOES(var_target, var_attachment, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4356,12 +4578,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glUnmapBufferOES\n", err);
 		#endif
 			DEBUG("gles1(%p): glUnmapBufferOES(0x%08x )\n", stream, var_target);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glUnmapBufferOES(var_target);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4466,6 +4694,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += sizeof(GLbitfield);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_mantissa(&tmpBuf[0], size_mantissa);
 			OutputBuffer outptr_exponent(&tmpBuf[0 + size_mantissa], size_exponent);
 		#ifdef CHECK_GL_ERRORS
@@ -4476,6 +4708,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			*(GLbitfield *)(&tmpBuf[0 + size_mantissa + size_exponent]) = 			this->glQueryMatrixxOES((GLfixed*)(outptr_mantissa.get()), (GLint*)(outptr_exponent.get()));
 			outptr_mantissa.flush();
 			outptr_exponent.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4583,6 +4817,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_eqn;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_eqn(&tmpBuf[0], size_eqn);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -4591,6 +4829,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetClipPlanefOES(0x%08x %p(%u) )\n", stream, var_pname, (GLfloat*)(outptr_eqn.get()), size_eqn);
 			this->glGetClipPlanefOES(var_pname, (GLfloat*)(outptr_eqn.get()));
 			outptr_eqn.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4814,6 +5054,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_arrays;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_arrays(&tmpBuf[0], size_arrays);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -4822,6 +5066,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGenVertexArraysOES(%d %p(%u) )\n", stream, var_n, (GLuint*)(outptr_arrays.get()), size_arrays);
 			this->glGenVertexArraysOES(var_n, (GLuint*)(outptr_arrays.get()));
 			outptr_arrays.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -4838,12 +5084,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsVertexArrayOES\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsVertexArrayOES(%u )\n", stream, var_array);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsVertexArrayOES(var_array);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5033,12 +5285,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glIsFenceNV\n", err);
 		#endif
 			DEBUG("gles1(%p): glIsFenceNV(%u )\n", stream, var_fence);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glIsFenceNV(var_fence);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5055,12 +5313,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glTestFenceNV\n", err);
 		#endif
 			DEBUG("gles1(%p): glTestFenceNV(%u )\n", stream, var_fence);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glTestFenceNV(var_fence);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5079,6 +5343,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -5087,6 +5355,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glGetFenceivNV(%u 0x%08x %p(%u) )\n", stream, var_fence, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glGetFenceivNV(var_fence, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5137,6 +5407,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_driverControls;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_num(&tmpBuf[0], size_num);
 			OutputBuffer outptr_driverControls(&tmpBuf[0 + size_num], size_driverControls);
 		#ifdef CHECK_GL_ERRORS
@@ -5147,6 +5421,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glGetDriverControlsQCOM((GLint*)(outptr_num.get()), var_size, (GLuint*)(outptr_driverControls.get()));
 			outptr_num.flush();
 			outptr_driverControls.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5167,6 +5443,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_driverControlString;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_length(&tmpBuf[0], size_length);
 			OutputBuffer outptr_driverControlString(&tmpBuf[0 + size_length], size_driverControlString);
 		#ifdef CHECK_GL_ERRORS
@@ -5177,6 +5457,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glGetDriverControlStringQCOM(var_driverControl, var_bufSize, (GLsizei*)(outptr_length.get()), (GLchar*)(outptr_driverControlString.get()));
 			outptr_length.flush();
 			outptr_driverControlString.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5226,6 +5508,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_numTextures;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_textures(&tmpBuf[0], size_textures);
 			OutputBuffer outptr_numTextures(&tmpBuf[0 + size_textures], size_numTextures);
 		#ifdef CHECK_GL_ERRORS
@@ -5236,6 +5522,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glExtGetTexturesQCOM((GLuint*)(outptr_textures.get()), var_maxTextures, (GLint*)(outptr_numTextures.get()));
 			outptr_textures.flush();
 			outptr_numTextures.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5255,6 +5543,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_numBuffers;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_buffers(&tmpBuf[0], size_buffers);
 			OutputBuffer outptr_numBuffers(&tmpBuf[0 + size_buffers], size_numBuffers);
 		#ifdef CHECK_GL_ERRORS
@@ -5265,6 +5557,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glExtGetBuffersQCOM((GLuint*)(outptr_buffers.get()), var_maxBuffers, (GLint*)(outptr_numBuffers.get()));
 			outptr_buffers.flush();
 			outptr_numBuffers.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5284,6 +5578,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_numRenderbuffers;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_renderbuffers(&tmpBuf[0], size_renderbuffers);
 			OutputBuffer outptr_numRenderbuffers(&tmpBuf[0 + size_renderbuffers], size_numRenderbuffers);
 		#ifdef CHECK_GL_ERRORS
@@ -5294,6 +5592,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glExtGetRenderbuffersQCOM((GLuint*)(outptr_renderbuffers.get()), var_maxRenderbuffers, (GLint*)(outptr_numRenderbuffers.get()));
 			outptr_renderbuffers.flush();
 			outptr_numRenderbuffers.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5313,6 +5613,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_numFramebuffers;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_framebuffers(&tmpBuf[0], size_framebuffers);
 			OutputBuffer outptr_numFramebuffers(&tmpBuf[0 + size_framebuffers], size_numFramebuffers);
 		#ifdef CHECK_GL_ERRORS
@@ -5323,6 +5627,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glExtGetFramebuffersQCOM((GLuint*)(outptr_framebuffers.get()), var_maxFramebuffers, (GLint*)(outptr_numFramebuffers.get()));
 			outptr_framebuffers.flush();
 			outptr_numFramebuffers.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5343,6 +5649,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_params;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_params(&tmpBuf[0], size_params);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -5351,6 +5661,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glExtGetTexLevelParameterivQCOM(%u 0x%08x %d 0x%08x %p(%u) )\n", stream, var_texture, var_face, var_level, var_pname, (GLint*)(outptr_params.get()), size_params);
 			this->glExtGetTexLevelParameterivQCOM(var_texture, var_face, var_level, var_pname, (GLint*)(outptr_params.get()));
 			outptr_params.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5394,6 +5706,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = size_texels;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_texels(&tmpBuf[0], size_texels);
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
@@ -5402,6 +5718,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			DEBUG("gles1(%p): glExtGetTexSubImageQCOM(0x%08x %d %d %d %d %d %d %d 0x%08x 0x%08x %p(%u) )\n", stream, var_target, var_level, var_xoffset, var_yoffset, var_zoffset, var_width, var_height, var_depth, var_format, var_type, (GLvoid*)(outptr_texels.get()), size_texels);
 			this->glExtGetTexSubImageQCOM(var_target, var_level, var_xoffset, var_yoffset, var_zoffset, var_width, var_height, var_depth, var_format, var_type, (GLvoid*)(outptr_texels.get()));
 			outptr_texels.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5438,6 +5756,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_numShaders;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_shaders(&tmpBuf[0], size_shaders);
 			OutputBuffer outptr_numShaders(&tmpBuf[0 + size_shaders], size_numShaders);
 		#ifdef CHECK_GL_ERRORS
@@ -5448,6 +5770,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glExtGetShadersQCOM((GLuint*)(outptr_shaders.get()), var_maxShaders, (GLint*)(outptr_numShaders.get()));
 			outptr_shaders.flush();
 			outptr_numShaders.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5467,6 +5791,10 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			totalTmpSize += size_numPrograms;
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 			OutputBuffer outptr_programs(&tmpBuf[0], size_programs);
 			OutputBuffer outptr_numPrograms(&tmpBuf[0 + size_programs], size_numPrograms);
 		#ifdef CHECK_GL_ERRORS
@@ -5477,6 +5805,8 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			this->glExtGetProgramsQCOM((GLuint*)(outptr_programs.get()), var_maxPrograms, (GLint*)(outptr_numPrograms.get()));
 			outptr_programs.flush();
 			outptr_numPrograms.flush();
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}
@@ -5493,12 +5823,18 @@ size_t gles1_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, 
 			size_t totalTmpSize = sizeof(GLboolean);
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
+
+			if (tcpChannel != nullptr) {
+				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);
+			} else {
 		#ifdef CHECK_GL_ERRORS
 		GLint err = this->glGetError();
 		if (err) fprintf(stderr, "gles1 Error (pre-call): 0x%X before glExtIsProgramBinaryQCOM\n", err);
 		#endif
 			DEBUG("gles1(%p): glExtIsProgramBinaryQCOM(%u )\n", stream, var_program);
 			*(GLboolean *)(&tmpBuf[0]) = 			this->glExtIsProgramBinaryQCOM(var_program);
+			}
+
 			if (useChecksum) {
 				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
 			}

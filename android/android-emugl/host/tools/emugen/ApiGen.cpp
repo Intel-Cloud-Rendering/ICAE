@@ -852,6 +852,7 @@ int ApiGen::genDecoderHeader(const std::string &filename)
     fprintf(fp, "#include \"ChecksumCalculator.h\"\n");
     fprintf(fp, "#include \"%s_%s_context.h\"\n\n\n", m_basename.c_str(), sideString(SERVER_SIDE));
     fprintf(fp, "#include \"emugl/common/logging.h\"\n");
+    fprintf(fp, "#include \"emugl/common/tcp_channel.h\"\n");
 #if INSTRUMENT_TIMING_HOST
     fprintf(fp, "#include \"time.h\"\n");
 #endif
@@ -863,7 +864,7 @@ int ApiGen::genDecoderHeader(const std::string &filename)
 
     fprintf(fp, "struct %s : public %s_%s_context_t {\n\n",
             classname.c_str(), m_basename.c_str(), sideString(SERVER_SIDE));
-    fprintf(fp, "\tsize_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc);\n");
+    fprintf(fp, "\tsize_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc, emugl::TcpChannel *tcpChannel);\n");
     fprintf(fp, "\n};\n\n");
     fprintf(fp, "#endif  // GUARD_%s\n", classname.c_str());
 
@@ -950,11 +951,18 @@ int ApiGen::genDecoderImpl(const std::string &filename)
             "#  define SET_LASTCALL(name)\n"
             "#endif\n");
 
+    EntryPoint *e = &(*this)[0];
+    fprintf(fp,
+            "static inline bool isValidRcCode(int opCode){\n"
+            "    return ((opCode >= OP_%s) && (opCode < OP_last));\n"
+            "}\n",
+            e->name().c_str());
+
     // helper templates
     fprintf(fp, "using namespace emugl;\n\n");
 
     // decoder switch;
-    fprintf(fp, "size_t %s::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc) {\n", classname.c_str());
+    fprintf(fp, "size_t %s::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, TcpChannel *tcpChannel) {\n", classname.c_str());
     fprintf(fp,
 "\tif (len < 8) return 0; \n\
 #ifdef CHECK_GL_ERRORS\n\
@@ -981,6 +989,14 @@ R"(        // Do this on every iteration, as some commands may change the checks
         const bool useChecksum = checksumSize > 0;
 )");
     }
+
+    fprintf(fp,
+            "\t\tif (tcpChannel != nullptr) {\n"
+            "\t\t\tif (isValidRcCode(opcode)) {\n"
+            "\t\t\t\ttcpChannel->sndBufUntil(ptr, packetLen);\n"
+            "\t\t\t}\n"
+            "\t\t}\n");
+
     fprintf(fp, "\t\tswitch(opcode) {\n");
 
     for (size_t f = 0; f < n; f++) {
@@ -1317,13 +1333,19 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 if (totalTmpBuffExist) {
                     fprintf(fp,
                             "\t\t\ttotalTmpSize += checksumSize;\n"
-                            "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n");
+                            "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n"
+                            "\n"
+                            "\t\t\tif (tcpChannel != nullptr) {\n"
+                            "\t\t\t\ttcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);\n"
+                            "\t\t\t} else {\n");
                 }
             }
 
             if (pass == PASS_Epilog) {
                 // send back out pointers data as well as retval
                 if (totalTmpBuffExist) {
+                    fprintf(fp,
+                            "\t\t\t}\n\n");
                     fprintf(fp,
                             "\t\t\tif (useChecksum) {\n"
                             "\t\t\t\tChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, "
