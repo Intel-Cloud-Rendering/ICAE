@@ -993,7 +993,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
     fprintf(fp,
             "\t\tif (tcpChannel != nullptr) {\n"
             "\t\t\tif (isValidRcCode(opcode)) {\n"
-            "\t\t\t\ttcpChannel->sndBufUntil(ptr, packetLen);\n"
+            "\t\t\t\t//printf(\"opcode = %d\", opcode);\n"
             "\t\t\t}\n"
             "\t\t}\n");
 

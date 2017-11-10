@@ -95,8 +95,9 @@ intptr_t RenderThread::main() {
     const char* render_client = getenv("render_client");
     if (render_client) {
         bool ret = tcpChannel.start();
-        assert(!ret);
+        assert(ret);
         if (!ret) {
+            printf("connect failed\n");
             return 0;
         }
         tcpChannelPtr = &tcpChannel;
@@ -156,8 +157,6 @@ intptr_t RenderThread::main() {
             packetSize = 8;
         }
 
-        printf("packetSize = %d bytes\n", packetSize);
-
         // We should've processed the packet on the previous iteration if it
         // was already in the buffer.
         assert(packetSize > (int)readBuf.validData());
@@ -171,11 +170,11 @@ intptr_t RenderThread::main() {
            (int)readBuf.validData(), *(int32_t*)readBuf.buf(),
            *(int32_t*)(readBuf.buf() + 4));
 
+        int hasSent = readBuf.validData() - stat;
         head.packet_type = 0;
-        head.packet_body_size = readBuf.validData();
-        printf("readBuf size = %d bytes\n", (int)readBuf.validData());
+        head.packet_body_size = stat;
         tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
-    	tcpChannel.sndBufUntil((unsigned char*)readBuf.buf(), readBuf.validData());
+    	tcpChannel.sndBufUntil((unsigned char*)readBuf.buf() + hasSent, stat);
 
         //
         // log received bandwidth statistics
@@ -220,7 +219,9 @@ intptr_t RenderThread::main() {
             FrameBuffer::getFB()->lockContextStructureRead();
             size_t last = tInfo.m_glDec.decode(
                     readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, tcpChannelPtr);
+            
             if (last > 0) {
+                //printf("gles1 dec consume %d bytes\n", (int)last);
                 progress = true;
                 readBuf.consume(last);
             }
@@ -234,6 +235,7 @@ intptr_t RenderThread::main() {
             FrameBuffer::getFB()->unlockContextStructureRead();
 
             if (last > 0) {
+                //printf("gles2 dec consume %d bytes\n", (int)last);
                 progress = true;
                 readBuf.consume(last);
             }
@@ -245,11 +247,13 @@ intptr_t RenderThread::main() {
             last = tInfo.m_rcDec.decode(readBuf.buf(), readBuf.validData(),
                                         &stream, &checksumCalc, tcpChannelPtr);
             if (last > 0) {
-                printf("readBuf consume = %d bytes\n", (int)last);
+                //printf("egl dec consume %d bytes\n", (int)last);
                 readBuf.consume(last);
                 progress = true;
             }
         } while (progress);
+
+        //printf("after dec %d bytes left\n", (int)readBuf.validData());
     }
 
     if (dumpFP) {
