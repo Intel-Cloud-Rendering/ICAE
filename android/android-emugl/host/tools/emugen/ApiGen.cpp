@@ -1336,7 +1336,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
                             "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n"
                             "\n"
                             "\t\t\tif (tcpChannel != nullptr) {\n"
-                            "\t\t\t\ttcpChannel->rcvBufUntil(tmpBuf, totalTmpSize - checksumSize);\n"
+                            "\t\t\t\ttcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);\n"
                             "\t\t\t} else {\n");
                 }
             }
@@ -1345,13 +1345,12 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 // send back out pointers data as well as retval
                 if (totalTmpBuffExist) {
                     fprintf(fp,
-                            "\t\t\t}\n\n");
-                    fprintf(fp,
                             "\t\t\tif (useChecksum) {\n"
                             "\t\t\t\tChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, "
                             "&tmpBuf[0], totalTmpSize - checksumSize, "
                             "&tmpBuf[totalTmpSize - checksumSize], checksumSize);\n"
                             "\t\t\t}\n"
+                            "\t\t\t}\n\n"
                             "\t\t\tstream->flush();\n");
                 }
             }

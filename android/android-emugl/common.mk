@@ -227,8 +227,8 @@ GEN := $$(_emugl_dec)_dec.cpp \
 
 $$(GEN): PRIVATE_PATH := $$(LOCAL_PATH)
 $$(GEN): PRIVATE_CUSTOM_TOOL := $$(EMUGL_EMUGEN) -D $$1 -i $$2 $$3
-#$$(GEN): $$(EMUGL_EMUGEN) $$(_emugl_src).attrib $$(_emugl_src).in $$(_emugl_src).types
-#	$$(transform-generated-source)
+$$(GEN): $$(EMUGL_EMUGEN) $$(_emugl_src).attrib $$(_emugl_src).in $$(_emugl_src).types
+	$$(transform-generated-source)
 
 $$(call emugl-export,ADDITIONAL_DEPENDENCIES,$$(GEN))
 LOCAL_GENERATED_SOURCES += $$(GEN)
