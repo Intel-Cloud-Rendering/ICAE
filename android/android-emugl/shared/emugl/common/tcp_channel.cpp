@@ -73,7 +73,7 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
         nLeft    -= ret;
     }
 
-    printf("send  to server %d bytes\n", wantBufLen);
+    //printf("send  to server %d bytes\n", wantBufLen);
     return wantBufLen;
 }
 
@@ -103,7 +103,7 @@ int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
         totalLen += ret;
     }
 
-    printf("recv from server %d bytes\n", wantBufLen);
+    //printf("recv from server %d bytes\n", wantBufLen);
     return totalLen;
 }
 
