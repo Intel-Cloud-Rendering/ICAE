@@ -31,6 +31,8 @@
 
 #include "android/base/system/System.h"
 
+
+
 #define EMUGL_DEBUG_LEVEL 0
 #include "emugl/common/debug.h"
 
@@ -41,6 +43,14 @@
 #include <string.h>
 
 namespace emugl {
+
+typedef struct _GLCmdPacketHead {
+    int packet_type : 8;
+    int packet_body_size : 24;
+} __attribute__ ((packed)) GLCmdPacketHead;
+
+#define PACKET_HEAD_LEN       (sizeof(GLCmdPacketHead))
+
 
 // Start with a smaller buffer to not waste memory on a low-used render threads.
 static constexpr int kStreamBufferSize = 128 * 1024;
@@ -72,13 +82,14 @@ intptr_t RenderThread::main() {
     const char* render_svr_hostname = getenv("render_svr_hostname");
     if (!render_svr_hostname) {
         fprintf(stdout, "Cannot find render server hostname\n");
-        render_svr_hostname = "localhost";
+        render_svr_hostname = "127.0.0.1";
     }
     const char* render_svr_port = getenv("render_svr_port");
     if (!render_svr_port) {
         fprintf(stdout, "Cannot find render server port\n");
         render_svr_port = "23432";
     }
+    printf("new connection %s : %s\n", render_svr_hostname, render_svr_port);
     TcpChannel tcpChannel(render_svr_hostname, atoi(render_svr_port));
     TcpChannel *tcpChannelPtr = nullptr;
     const char* render_client = getenv("render_client");
@@ -93,6 +104,12 @@ intptr_t RenderThread::main() {
 
     // |flags| used to have something, now they're not used.
     (void)flags;
+
+    GLCmdPacketHead head;
+    head.packet_type = 0;
+    head.packet_body_size = sizeof(flags);
+    tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
+	tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
 
     RenderThreadInfo tInfo;
     ChecksumCalculatorThreadInfo tChecksumInfo;
@@ -139,6 +156,8 @@ intptr_t RenderThread::main() {
             packetSize = 8;
         }
 
+        printf("packetSize = %d bytes\n", packetSize);
+
         // We should've processed the packet on the previous iteration if it
         // was already in the buffer.
         assert(packetSize > (int)readBuf.validData());
@@ -151,6 +170,12 @@ intptr_t RenderThread::main() {
         DD("render thread read %d bytes, op %d, packet size %d",
            (int)readBuf.validData(), *(int32_t*)readBuf.buf(),
            *(int32_t*)(readBuf.buf() + 4));
+
+        head.packet_type = 0;
+        head.packet_body_size = readBuf.validData();
+        printf("readBuf size = %d bytes\n", (int)readBuf.validData());
+        tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
+    	tcpChannel.sndBufUntil((unsigned char*)readBuf.buf(), readBuf.validData());
 
         //
         // log received bandwidth statistics
@@ -220,6 +245,7 @@ intptr_t RenderThread::main() {
             last = tInfo.m_rcDec.decode(readBuf.buf(), readBuf.validData(),
                                         &stream, &checksumCalc, tcpChannelPtr);
             if (last > 0) {
+                printf("readBuf consume = %d bytes\n", (int)last);
                 readBuf.consume(last);
                 progress = true;
             }
@@ -229,6 +255,10 @@ intptr_t RenderThread::main() {
     if (dumpFP) {
         fclose(dumpFP);
     }
+
+    head.packet_type = 1;
+    head.packet_body_size = 0;
+    tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
 
     // exit sync thread, if any.
     SyncThread::destroySyncThread();
