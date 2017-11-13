@@ -236,7 +236,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay display, EGLint *major, E
 
     char error[256];
     if(!g_eglInfo->getIface(GLES_1_1)) {
-        func  = loadIfaces(LIB_GLES_CM_NAME, error, sizeof(error));
+        const char *libName = getenv("ANDROID_GLESv1_LIB");
+        if (!libName) libName = LIB_GLES_CM_NAME;
+        func  = loadIfaces(libName, error, sizeof(error));
         if (func) {
             g_eglInfo->setIface(func(&s_eglIface),GLES_1_1);
         } else {
@@ -247,7 +249,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay display, EGLint *major, E
         initGLESx(GLES_1_1);
     }
     if(!g_eglInfo->getIface(GLES_2_0)) {
-        func  = loadIfaces(LIB_GLES_V2_NAME, error, sizeof(error));
+        const char *libName = getenv("ANDROID_GLESv2_LIB");
+        if (!libName) libName = LIB_GLES_V2_NAME;
+        func  = loadIfaces(libName, error, sizeof(error));
         if (func) {
             renderableType |= EGL_OPENGL_ES2_BIT;
             g_eglInfo->setIface(func(&s_eglIface),GLES_2_0);
@@ -258,7 +262,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay display, EGLint *major, E
         initGLESx(GLES_2_0);
     }
     if(!g_eglInfo->getIface(GLES_3_0)) {
-        func  = loadIfaces(LIB_GLES_V2_NAME, error, sizeof(error));
+        const char *libName = getenv("ANDROID_GLESv2_LIB");
+        if (!libName) libName = LIB_GLES_V2_NAME;
+        func  = loadIfaces(libName, error, sizeof(error));
         if (func) {
             renderableType |= EGL_OPENGL_ES2_BIT | EGL_OPENGL_ES3_BIT;
             g_eglInfo->setIface(func(&s_eglIface),GLES_3_0);
@@ -269,7 +275,9 @@ EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay display, EGLint *major, E
         initGLESx(GLES_3_0);
     }
     if(!g_eglInfo->getIface(GLES_3_1)) {
-        func  = loadIfaces(LIB_GLES_V2_NAME, error, sizeof(error));
+        const char *libName = getenv("ANDROID_GLESv2_LIB");
+        if (!libName) libName = LIB_GLES_V2_NAME;
+        func  = loadIfaces(libName, error, sizeof(error));
         if (func) {
             renderableType |= EGL_OPENGL_ES2_BIT | EGL_OPENGL_ES3_BIT;
             g_eglInfo->setIface(func(&s_eglIface),GLES_3_1);
