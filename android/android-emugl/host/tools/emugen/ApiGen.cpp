@@ -1058,11 +1058,11 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 }
             } else if (pass == PASS_DebugPrint) {
                 if (strstr(m_basename.c_str(), "gl")) {
-                    fprintf(fp, "\t\t#ifdef CHECK_GL_ERRORS\n");
-                    fprintf(fp, "\t\tGLint err = this->glGetError();\n");
-                    fprintf(fp, "\t\tif (err) fprintf(stderr, \"%s Error (pre-call): 0x%%X before %s\\n\", err);\n",
+                    fprintf(fp, "\t\t\t#ifdef CHECK_GL_ERRORS\n");
+                    fprintf(fp, "\t\t\tGLint err = this->glGetError();\n");
+                    fprintf(fp, "\t\t\tif (err) fprintf(stderr, \"%s Error (pre-call): 0x%%X before %s\\n\", err);\n",
                             m_basename.c_str(), e->name().c_str());
-                    fprintf(fp, "\t\t#endif\n");
+                    fprintf(fp, "\t\t\t#endif\n");
                 }
                 fprintf(fp,
                         "\t\t\tDEBUG(\"%s(%%p): %s(%s)\\n\", stream",
@@ -1352,7 +1352,17 @@ R"(        // Do this on every iteration, as some commands may change the checks
                             "\t\t\t\tChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, "
                             "&tmpBuf[0], totalTmpSize - checksumSize, "
                             "&tmpBuf[totalTmpSize - checksumSize], checksumSize);\n"
-                            "\t\t\t}\n"
+                            "\t\t\t}\n");
+                    // `tmpBuf` has been filled with "fake ID", need to send before
+                    // `stream->flush()` which will release `tmpBuf`.
+                    fprintf(fp,
+                            "\n"
+                            "\t\t\tDEBUG(\"sending (%%p, 0x%%lx) to render, first byte: 0x%%x\","
+                                         "&tmpBuf[0], totalTmpSize, *(uint8_t*)&tmpBuf[0]);\n"
+                            "\t\t\tsize_t sendSize = tcpChannel->sndBufUntil(&tmpBuf[0], totalTmpSize);\n"
+                            "\t\t\tassert(sendSize == totalTmpSize);"
+                            "\n");
+                    fprintf(fp,
                             "\t\t\tassert((ptr + packetLen) == end);\n"
                             "\t\t\tstream->flush();\n");
                 }
