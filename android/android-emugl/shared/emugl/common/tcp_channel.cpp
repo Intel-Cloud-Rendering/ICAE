@@ -46,7 +46,6 @@ void TcpChannel::stop() {
 
 int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
     if (mSockFd < 0) {
-        assert(false);
         return -1;
     }
 
@@ -79,7 +78,6 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
 
 int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
     if (mSockFd < 0) {
-        assert(false);
         return -1;
     }
     
