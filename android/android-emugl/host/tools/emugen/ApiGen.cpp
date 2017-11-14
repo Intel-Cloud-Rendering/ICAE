@@ -1333,11 +1333,13 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 if (totalTmpBuffExist) {
                     fprintf(fp,
                             "\t\t\ttotalTmpSize += checksumSize;\n"
-                            "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n"
-                            "\n"
+                            "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n");
+
+                    // Receive buffer from render
+                    fprintf(fp,
                             "\t\t\tif (tcpChannel != nullptr) {\n"
                             "\t\t\t\ttcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);\n"
-                            "\t\t\t} else {\n");
+                            "\t\t\t}\n");
                 }
             }
 
@@ -1350,7 +1352,6 @@ R"(        // Do this on every iteration, as some commands may change the checks
                             "&tmpBuf[0], totalTmpSize - checksumSize, "
                             "&tmpBuf[totalTmpSize - checksumSize], checksumSize);\n"
                             "\t\t\t}\n"
-                            "\t\t\t}\n\n"
                             "\t\t\tstream->flush();\n");
                 }
             }
