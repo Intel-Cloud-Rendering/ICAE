@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
 
 namespace emugl {
 
@@ -17,10 +18,39 @@ TcpChannel::TcpChannel(const char *hostName, int port) {
     strcpy(mSockIP, hostName);
     mSockPort = port;
     mSockFd   = -1;
+
+    const char* dump_dir = getenv("TCPCHANNEL_DUMP_DIR");
+    if (dump_dir) {
+        size_t bsize = strlen(dump_dir) + 32;
+        char* fname = new char[bsize];
+
+        snprintf(fname, bsize, "%s/tcp_channel_%p_snd", dump_dir, this);
+        mDumpSndFP= fopen(fname, "wb");
+        if (!mDumpSndFP) {
+            fprintf(stderr, "Warning: send stream dump failed to open file %s\n",
+                    fname);
+        }
+
+        snprintf(fname, bsize, "%s/tcp_channel_%p_rcv", dump_dir, this);
+        mDumpRcvFP= fopen(fname, "wb");
+        if (!mDumpRcvFP) {
+            fprintf(stderr, "Warning: receive stream dump failed to open file %s\n",
+                    fname);
+        }
+        delete[] fname;
+    }
 }
 
 TcpChannel::~TcpChannel() {
     stop();
+
+    if (mDumpSndFP != NULL) {
+        fclose(mDumpSndFP);
+    }
+
+    if (mDumpRcvFP != NULL) {
+        fclose(mDumpRcvFP);
+    }
 }
 
 bool TcpChannel::start() {
@@ -68,6 +98,11 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
             }
         }
 
+        if (mDumpSndFP) {
+            fwrite(buf + writePos, 1, ret, mDumpSndFP);
+            fflush(mDumpSndFP);
+        }
+
         writePos += ret;
         nLeft    -= ret;
     }
@@ -80,7 +115,7 @@ int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
     if (mSockFd < 0) {
         return -1;
     }
-    
+
     int totalLen = 0;
     while ((totalLen < wantBufLen) && (!mStop)) {
         int ret;
@@ -98,6 +133,12 @@ int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
                 return -1;
             }
         }
+
+        if (mDumpRcvFP) {
+            fwrite(buf + totalLen, 1, ret, mDumpRcvFP);
+            fflush(mDumpRcvFP);
+        }
+
         totalLen += ret;
     }
 

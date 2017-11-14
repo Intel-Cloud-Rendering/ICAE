@@ -3,6 +3,7 @@
 #include "android/utils/compiler.h"
 
 #include <stdint.h>
+#include <stdio.h>
 
 ANDROID_BEGIN_HEADER
 
@@ -24,6 +25,8 @@ private:
     char             mSockIP[512] = {0};
     int              mSockPort;
     bool             mStop;
+    FILE            *mDumpSndFP = NULL;
+    FILE            *mDumpRcvFP = NULL;
 };
 
 }
