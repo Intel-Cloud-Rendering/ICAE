@@ -44,14 +44,6 @@
 
 namespace emugl {
 
-typedef struct _GLCmdPacketHead {
-    int packet_type : 8;
-    int packet_body_size : 24;
-} __attribute__ ((packed)) GLCmdPacketHead;
-
-#define PACKET_HEAD_LEN       (sizeof(GLCmdPacketHead))
-
-
 // Start with a smaller buffer to not waste memory on a low-used render threads.
 static constexpr int kStreamBufferSize = 128 * 1024;
 
@@ -106,10 +98,6 @@ intptr_t RenderThread::main() {
     // |flags| used to have something, now they're not used.
     (void)flags;
 
-    GLCmdPacketHead head;
-    head.packet_type = 0;
-    head.packet_body_size = sizeof(flags);
-    tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
 	tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
 
     RenderThreadInfo tInfo;
@@ -171,9 +159,6 @@ intptr_t RenderThread::main() {
            *(int32_t*)(readBuf.buf() + 4));
 
         int hasSent = readBuf.validData() - stat;
-        head.packet_type = 0;
-        head.packet_body_size = stat;
-        tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
     	tcpChannel.sndBufUntil((unsigned char*)readBuf.buf() + hasSent, stat);
 
         //
@@ -259,10 +244,6 @@ intptr_t RenderThread::main() {
     if (dumpFP) {
         fclose(dumpFP);
     }
-
-    head.packet_type = 1;
-    head.packet_body_size = 0;
-    tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
 
     // exit sync thread, if any.
     SyncThread::destroySyncThread();

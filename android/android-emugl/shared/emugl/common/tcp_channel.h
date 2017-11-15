@@ -21,6 +21,9 @@ public:
     int rcvBufUntil(uint8_t *buf, int wantBufLen);
 
 private:
+    int sockSndBufUntil(uint8_t *buf, int wantBufLen);
+
+private:
     int              mSockFd;
     char             mSockIP[512] = {0};
     int              mSockPort;

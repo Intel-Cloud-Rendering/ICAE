@@ -23,6 +23,13 @@ namespace emugl {
 #define AutoLog() ((void)0)
 #endif
 
+typedef struct _GLCmdPacketHead {
+    int packet_type : 8;
+    int packet_body_size : 24;
+} __attribute__ ((packed)) GLCmdPacketHead;
+
+#define PACKET_HEAD_LEN       (sizeof(GLCmdPacketHead))
+
 TcpChannel::TcpChannel(const char *hostName, int port) {
     AutoLog();
 
@@ -83,6 +90,12 @@ void TcpChannel::stop() {
     AutoLog();
     if (mSockFd > 0) {
         //socket_close(mSockFd);
+
+        GLCmdPacketHead head;
+        head.packet_type = 1;
+        head.packet_body_size = 0;
+        sockSndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
+
         android::base::socketClose(mSockFd);
         mSockFd = -1;
     }
@@ -95,6 +108,21 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
         return -1;
     }
 
+    GLCmdPacketHead head;
+    head.packet_type = 0;
+    head.packet_body_size = wantBufLen;
+    int ret = sockSndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
+    if (ret != PACKET_HEAD_LEN) {
+        assert(false);
+        return ret;
+    }
+
+    ret = sockSndBufUntil(buf, wantBufLen);
+    //printf("send  to server %d bytes\n", ret);
+    return ret;
+}
+
+int TcpChannel::sockSndBufUntil(uint8_t *buf, int wantBufLen) {
     int writePos = 0;
     int nLeft = wantBufLen;
     while (nLeft > 0) {
@@ -123,7 +151,6 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
         nLeft    -= ret;
     }
 
-    //printf("send  to server %d bytes\n", wantBufLen);
     return wantBufLen;
 }
 
