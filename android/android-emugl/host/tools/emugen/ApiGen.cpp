@@ -926,6 +926,7 @@ int ApiGen::genDecoderImpl(const std::string &filename)
     }
 
     fprintf(fp, "\n\n#include <string.h>\n");
+    fprintf(fp, "\n\n#include <assert.h>\n");
     fprintf(fp, "#include \"%s_opcodes.h\"\n\n", m_basename.c_str());
     fprintf(fp, "#include \"%s_dec.h\"\n\n\n", m_basename.c_str());
     fprintf(fp, "#include \"ProtocolUtils.h\"\n\n");
@@ -1352,6 +1353,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
                             "&tmpBuf[0], totalTmpSize - checksumSize, "
                             "&tmpBuf[totalTmpSize - checksumSize], checksumSize);\n"
                             "\t\t\t}\n"
+                            "\t\t\tassert((ptr + packetLen) == end);\n"
                             "\t\t\tstream->flush();\n");
                 }
             }

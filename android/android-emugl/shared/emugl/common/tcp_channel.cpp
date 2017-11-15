@@ -5,6 +5,8 @@
 #include "android/emulation/VmLock.h"
 #include "android/base/sockets/SocketUtils.h"
 
+#include "logging.h"
+
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
@@ -14,7 +16,16 @@
 
 namespace emugl {
 
+#define DEBUG 0
+#if DEBUG >= 1
+#define AutoLog() AutoLogger autoLogger(__func__, this)
+#else
+#define AutoLog() ((void)0)
+#endif
+
 TcpChannel::TcpChannel(const char *hostName, int port) {
+    AutoLog();
+
     strcpy(mSockIP, hostName);
     mSockPort = port;
     mSockFd   = -1;
@@ -42,6 +53,7 @@ TcpChannel::TcpChannel(const char *hostName, int port) {
 }
 
 TcpChannel::~TcpChannel() {
+    AutoLog();
     stop();
 
     if (mDumpSndFP != NULL) {
@@ -54,6 +66,7 @@ TcpChannel::~TcpChannel() {
 }
 
 bool TcpChannel::start() {
+    AutoLog();
     if (mSockFd == -1) {
         //mSockFd = socket_network_client(mSockIP, mSockPort, SOCKET_STREAM);
         mSockFd = android::base::socketTcp4LoopbackClient(mSockPort);
@@ -67,6 +80,7 @@ bool TcpChannel::start() {
 }
 
 void TcpChannel::stop() {
+    AutoLog();
     if (mSockFd > 0) {
         //socket_close(mSockFd);
         android::base::socketClose(mSockFd);
@@ -75,7 +89,9 @@ void TcpChannel::stop() {
 }
 
 int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
+    AutoLog();
     if (mSockFd < 0) {
+        fprintf(stderr, "%s: invalid socket FD\n", __func__);
         return -1;
     }
 
@@ -112,7 +128,9 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
 }
 
 int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
+    AutoLog();
     if (mSockFd < 0) {
+        fprintf(stderr, "%s: invalid socket FD\n", __func__);
         return -1;
     }
 

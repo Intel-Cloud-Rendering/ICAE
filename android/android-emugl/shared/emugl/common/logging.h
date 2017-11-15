@@ -18,6 +18,10 @@
 
 #include "OpenglRender/render_api_types.h"
 
+#include "android/utils/system.h"
+
+#include <assert.h>
+
 extern emugl_logger_t emugl_logger;
 extern emugl_logger_t emugl_cxt_logger;
 void set_emugl_logger(emugl_logger_t f);
@@ -38,3 +42,22 @@ void set_emugl_cxt_logger(emugl_logger_t f);
 #else
 #define GL_LOG(...) 0
 #endif
+
+class AutoLogger {
+public:
+    AutoLogger(const char *name, void *id) {
+        mTid = android_get_thread_id();
+        mId = id;
+        assert(strlen(name) < sizeof(mFuncName));
+        strcpy(mFuncName, name);
+        printf("[DEBUG][%p][0x%" ANDROID_THREADID_FMT "][%s <<<<<]\n", mId, mTid, mFuncName);
+    };
+    ~AutoLogger() {
+        printf("[DEBUG][%p][0x%" ANDROID_THREADID_FMT "][%s >>>>>]\n", mId, mTid, mFuncName);
+    };
+private:
+    char mFuncName[512] = {0};
+    void *mId;
+    android_thread_id_t mTid;
+};
+
