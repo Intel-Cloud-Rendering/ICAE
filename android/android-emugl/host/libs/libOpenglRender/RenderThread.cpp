@@ -79,18 +79,18 @@ intptr_t RenderThread::main() {
     }
 
     // Add Tcp Channel for comunication
-    const char* render_svr_hostname = getenv("render_svr_hostname");
-    if (!render_svr_hostname) {
+    const char* render_server_hostname = getenv("render_server_hostname");
+    if (!render_server_hostname) {
         fprintf(stdout, "Cannot find render server hostname\n");
-        render_svr_hostname = "127.0.0.1";
+        render_server_hostname = "127.0.0.1";
     }
-    const char* render_svr_port = getenv("render_svr_port");
-    if (!render_svr_port) {
+    const char* render_server_port = getenv("render_server_port");
+    if (!render_server_port) {
         fprintf(stdout, "Cannot find render server port\n");
-        render_svr_port = "23432";
+        render_server_port = "23432";
     }
-    printf("new connection %s : %s\n", render_svr_hostname, render_svr_port);
-    TcpChannel tcpChannel(render_svr_hostname, atoi(render_svr_port));
+    printf("new connection %s : %s\n", render_server_hostname, render_server_port);
+    TcpChannel tcpChannel(render_server_hostname, atoi(render_server_port));
     TcpChannel *tcpChannelPtr = nullptr;
     const char* render_client = getenv("render_client");
     if (render_client) {
