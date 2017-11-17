@@ -42,8 +42,8 @@ namespace emugl {
 
 typedef struct _PagePacketHead {
     int packet_type : 8;
-    int session_id : 8;
-    int packet_body_size : 16;
+    //int session_id : 8;
+    int packet_body_size : 24;
 } __attribute__ ((packed)) PagePacketHead;
 
 #define PAGE_PACKET_HEAD_LEN       (sizeof(PagePacketHead))
@@ -455,7 +455,7 @@ private:
 
         PagePacketHead head;
         head.packet_type = 0;
-        head.session_id = mRemoteChannelId;
+        //head.session_id = mRemoteChannelId;
         head.packet_body_size = page->writePos() - page->beginPos();
 
         ssize_t sentLen = 0;
