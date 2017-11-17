@@ -17,6 +17,7 @@
 
 #include "emugl/common/mutex.h"
 #include "emugl/common/thread.h"
+#include "OpenglRender/RemoteRenderChannel.h"
 
 #include <memory>
 
@@ -32,7 +33,8 @@ public:
     // Create a new RenderThread instance.
     static std::unique_ptr<RenderThread> create(
             std::weak_ptr<RendererImpl> renderer,
-            std::shared_ptr<RenderChannelImpl> channel);
+            std::shared_ptr<RenderChannelImpl> channel,
+            std::shared_ptr<RemoteRenderChannel> remote_channel);
 
     virtual ~RenderThread();
 
@@ -42,12 +44,15 @@ public:
 
 private:
     RenderThread(std::weak_ptr<RendererImpl> renderer,
-                 std::shared_ptr<RenderChannelImpl> channel);
+                 std::shared_ptr<RenderChannelImpl> channel,
+                 std::shared_ptr<RemoteRenderChannel> remote_channel);
 
     virtual intptr_t main();
 
     std::shared_ptr<RenderChannelImpl> mChannel;
     std::weak_ptr<RendererImpl> mRenderer;
+
+    std::shared_ptr<RemoteRenderChannel> mRemoteChannel;
 };
 
 }  // namespace emugl

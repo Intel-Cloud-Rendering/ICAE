@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <time.h>
 
 namespace emugl {
 
@@ -25,6 +26,7 @@ namespace emugl {
 
 typedef struct _GLCmdPacketHead {
     int packet_type : 8;
+    //int session_id : 8;
     int packet_body_size : 24;
 } __attribute__ ((packed)) GLCmdPacketHead;
 
@@ -36,6 +38,7 @@ TcpChannel::TcpChannel(const char *hostName, int port) {
     strcpy(mSockIP, hostName);
     mSockPort = port;
     mSockFd   = -1;
+    mSession = 0;
 
     const char* dump_dir = getenv("TCPCHANNEL_DUMP_DIR");
     if (dump_dir) {
@@ -93,6 +96,7 @@ void TcpChannel::stop() {
 
         GLCmdPacketHead head;
         head.packet_type = 1;
+        //head.session_id = mSession;
         head.packet_body_size = 0;
         sockSndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
 
@@ -110,6 +114,7 @@ int TcpChannel::sndBufUntil(uint8_t *buf, int wantBufLen) {
 
     GLCmdPacketHead head;
     head.packet_type = 0;
+    //head.session_id = mSession;
     head.packet_body_size = wantBufLen;
     int ret = sockSndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
     if (ret != PACKET_HEAD_LEN) {
@@ -156,13 +161,20 @@ int TcpChannel::sockSndBufUntil(uint8_t *buf, int wantBufLen) {
 
 int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
     AutoLog();
+    //printf("want recv from server %d bytes, session %d\n", wantBufLen, mSession);
     if (mSockFd < 0) {
         fprintf(stderr, "%s: invalid socket FD\n", __func__);
         return -1;
     }
 
+    //timespec time1, time2;
+    //clock_gettime(CLOCK_REALTIME, &time1);
     int totalLen = 0;
     while ((totalLen < wantBufLen) && (!mStop)) {
+        //printf("recving from server %d bytes\n", wantBufLen);
+        //clock_gettime(CLOCK_REALTIME, &time2);
+        //if (((time2.tv_sec - time1.tv_sec) + ((time2.tv_nsec - time1.tv_nsec) / (1000 * 1000 * 1000))) > 5) 
+        //    assert(0);
         int ret;
         {
             //android::ScopedVmUnlock unlockBql;
@@ -187,7 +199,7 @@ int TcpChannel::rcvBufUntil(uint8_t *buf, int wantBufLen) {
         totalLen += ret;
     }
 
-    //printf("recv from server %d bytes\n", wantBufLen);
+    //printf("recv from server %d bytes, session %d\n", wantBufLen, mSession);
     return totalLen;
 }
 

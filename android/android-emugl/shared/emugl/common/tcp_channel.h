@@ -12,6 +12,7 @@ namespace emugl {
 class TcpChannel {
 public:
     TcpChannel(const char *hostName, int port);
+    TcpChannel(int socket, int session) : mSockFd(socket), mSession(session) {};
     ~TcpChannel();
 
     bool start();
@@ -30,6 +31,7 @@ private:
     bool             mStop;
     FILE            *mDumpSndFP = NULL;
     FILE            *mDumpRcvFP = NULL;
+    int             mSession;
 };
 
 }

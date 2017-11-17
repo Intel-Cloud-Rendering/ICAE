@@ -14,6 +14,7 @@
 #include "RendererImpl.h"
 
 #include "RenderChannelImpl.h"
+#include "RemoteRenderChannel.h"
 
 #include "emugl/common/logging.h"
 #include "ErrorLog.h"
@@ -110,9 +111,13 @@ void RendererImpl::stop() {
 
 RenderChannelPtr RendererImpl::createRenderChannel() {
     const auto channel = std::make_shared<RenderChannelImpl>();
+    const auto remote_channel = std::make_shared<RemoteRenderChannel>();
 
+    if (!remote_channel->initChannel(4))
+        return nullptr;
+    
     std::unique_ptr<RenderThread> rt(RenderThread::create(
-            shared_from_this(), channel));
+            shared_from_this(), channel, remote_channel));
     if (!rt) {
         fprintf(stderr, "Failed to create RenderThread\n");
         return nullptr;

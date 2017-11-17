@@ -23,6 +23,7 @@
 #include "RendererImpl.h"
 #include "RenderChannelImpl.h"
 #include "RenderThreadInfo.h"
+#include "RemoteRenderChannel.h"
 
 #include "OpenGLESDispatch/EGLDispatch.h"
 #include "OpenGLESDispatch/GLESv2Dispatch.h"
@@ -48,18 +49,20 @@ namespace emugl {
 static constexpr int kStreamBufferSize = 128 * 1024;
 
 RenderThread::RenderThread(std::weak_ptr<RendererImpl> renderer,
-                           std::shared_ptr<RenderChannelImpl> channel)
+                           std::shared_ptr<RenderChannelImpl> channel,
+                           std::shared_ptr<RemoteRenderChannel> remote_channel)
     : emugl::Thread(android::base::ThreadFlags::MaskSignals, 2 * 1024 * 1024),
-      mChannel(channel), mRenderer(renderer) {}
+      mChannel(channel), mRenderer(renderer), mRemoteChannel(remote_channel) {}
 
 RenderThread::~RenderThread() = default;
 
 // static
 std::unique_ptr<RenderThread> RenderThread::create(
         std::weak_ptr<RendererImpl> renderer,
-        std::shared_ptr<RenderChannelImpl> channel) {
+        std::shared_ptr<RenderChannelImpl> channel,
+        std::shared_ptr<RemoteRenderChannel> remote_channel) {    
     return std::unique_ptr<RenderThread>(
-            new RenderThread(renderer, channel));
+            new RenderThread(renderer, channel, remote_channel));
 }
 
 intptr_t RenderThread::main() {
@@ -81,9 +84,11 @@ intptr_t RenderThread::main() {
         fprintf(stdout, "Cannot find render server port\n");
         render_server_port = "23432";
     }
-    printf("new connection %s : %s\n", render_server_hostname, render_server_port);
+    //printf("new connection %s : %s\n", render_server_hostname, render_server_port);
     TcpChannel tcpChannel(render_server_hostname, atoi(render_server_port));
+    //TcpChannel tcpChannel(mRemoteChannel->socket(), mRemoteChannel->sessionId());
     TcpChannel *tcpChannelPtr = nullptr;
+    //tcpChannelPtr = &tcpChannel;
     const char* render_client = getenv("render_client");
     if (render_client) {
         bool ret = tcpChannel.start();
@@ -99,6 +104,11 @@ intptr_t RenderThread::main() {
     (void)flags;
 
 	tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
+
+    //if (!mRemoteChannel->writeChannel((char*)(&flags), sizeof(flags))) {
+    //    D("Warning: render thread could not write data to remote");
+    //    return 0;
+    //}
 
     RenderThreadInfo tInfo;
     ChecksumCalculatorThreadInfo tChecksumInfo;
@@ -160,6 +170,10 @@ intptr_t RenderThread::main() {
 
         int hasSent = readBuf.validData() - stat;
     	tcpChannel.sndBufUntil((unsigned char*)readBuf.buf() + hasSent, stat);
+    	//if (!mRemoteChannel->writeChannel((char*)(readBuf.buf() + hasSent), stat)) {
+        //    D("Warning: render thread could not write data to remote");
+        //    break;
+        //}
 
         //
         // log received bandwidth statistics
@@ -245,6 +259,12 @@ intptr_t RenderThread::main() {
         fclose(dumpFP);
     }
 
+    //head.packet_type = 1;
+    //head.packet_body_size = 0;
+    //tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
+    tcpChannel.stop();
+
+    mRemoteChannel->closeChannel();
     // exit sync thread, if any.
     SyncThread::destroySyncThread();
 
@@ -260,7 +280,7 @@ intptr_t RenderThread::main() {
     FrameBuffer::getFB()->drainWindowSurface();
     FrameBuffer::getFB()->drainRenderContext();
 
-    DBG("Exited a RenderThread @%p\n", this);
+    printf("Exited a RenderThread @%p\n", this);
 
     return 0;
 }
