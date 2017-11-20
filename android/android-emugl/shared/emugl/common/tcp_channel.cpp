@@ -39,27 +39,6 @@ TcpChannel::TcpChannel(const char *hostName, int port) {
     mSockPort = port;
     mSockFd   = -1;
     mSession = 0;
-
-    const char* dump_dir = getenv("TCPCHANNEL_DUMP_DIR");
-    if (dump_dir) {
-        size_t bsize = strlen(dump_dir) + 32;
-        char* fname = new char[bsize];
-
-        snprintf(fname, bsize, "%s/tcp_channel_%p_snd", dump_dir, this);
-        mDumpSndFP= fopen(fname, "wb");
-        if (!mDumpSndFP) {
-            fprintf(stderr, "Warning: send stream dump failed to open file %s\n",
-                    fname);
-        }
-
-        snprintf(fname, bsize, "%s/tcp_channel_%p_rcv", dump_dir, this);
-        mDumpRcvFP= fopen(fname, "wb");
-        if (!mDumpRcvFP) {
-            fprintf(stderr, "Warning: receive stream dump failed to open file %s\n",
-                    fname);
-        }
-        delete[] fname;
-    }
 }
 
 TcpChannel::~TcpChannel() {
@@ -83,6 +62,28 @@ bool TcpChannel::start() {
         if (mSockFd == -1) {
             fprintf(stderr, "%s: cannot connect to rendering server.(%s)\n", __func__, errno_str);
             return false;
+        }
+
+        const char* dump_dir = getenv("TCPCHANNEL_DUMP_DIR");
+        if (dump_dir) {
+            size_t bsize = strlen(dump_dir) + 512;
+            char* fname = new char[bsize];
+
+            int peerPort = android::base::socketGetPort(mSockFd);
+            snprintf(fname, bsize, "%s/tcp_channel_%p_%d_snd", dump_dir, this, peerPort);
+            mDumpSndFP= fopen(fname, "wb");
+            if (!mDumpSndFP) {
+                fprintf(stderr, "Warning: send stream dump failed to open file %s\n",
+                        fname);
+            }
+
+            snprintf(fname, bsize, "%s/tcp_channel_%p_%d_rcv", dump_dir, this, peerPort);
+            mDumpRcvFP= fopen(fname, "wb");
+            if (!mDumpRcvFP) {
+                fprintf(stderr, "Warning: receive stream dump failed to open file %s\n",
+                        fname);
+            }
+            delete[] fname;
         }
     }
 

@@ -31,7 +31,7 @@ private:
     bool             mStop;
     FILE            *mDumpSndFP = NULL;
     FILE            *mDumpRcvFP = NULL;
-    int             mSession;
+    int              mSession;
 };
 
 }
