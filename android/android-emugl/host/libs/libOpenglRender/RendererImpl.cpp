@@ -115,7 +115,7 @@ RenderChannelPtr RendererImpl::createRenderChannel() {
 
     if (!remote_channel->initChannel(4))
         return nullptr;
-    
+
     std::unique_ptr<RenderThread> rt(RenderThread::create(
             shared_from_this(), channel, remote_channel));
     if (!rt) {

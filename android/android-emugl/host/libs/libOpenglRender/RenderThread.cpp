@@ -60,7 +60,7 @@ RenderThread::~RenderThread() = default;
 std::unique_ptr<RenderThread> RenderThread::create(
         std::weak_ptr<RendererImpl> renderer,
         std::shared_ptr<RenderChannelImpl> channel,
-        std::shared_ptr<RemoteRenderChannel> remote_channel) {    
+        std::shared_ptr<RemoteRenderChannel> remote_channel) {
     return std::unique_ptr<RenderThread>(
             new RenderThread(renderer, channel, remote_channel));
 }
@@ -103,7 +103,7 @@ intptr_t RenderThread::main() {
     // |flags| used to have something, now they're not used.
     (void)flags;
 
-	tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
+    tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
 
     //if (!mRemoteChannel->writeChannel((char*)(&flags), sizeof(flags))) {
     //    D("Warning: render thread could not write data to remote");

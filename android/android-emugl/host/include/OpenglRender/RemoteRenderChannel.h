@@ -65,33 +65,42 @@ public:
         mIsTailPage(false) {
         mBuf = (char*)malloc(pageSize);
     }
+
     ~BufferPage() {
         if (mBuf) {
             free(mBuf);
         }
     }
+
     inline int pageID() {
         return mPageId;
-        }
+    }
+
     inline char * beginPos() {
         return mBuf;
-        }
+    }
+
     inline char * writePos() {
         return mBuf + mPos;
-        }
+    }
+
     inline void updateWritePos(size_t pos) {
         mPos = pos;
         assert(mPos <= mSize);
-        }
+    }
+
     inline size_t capacity() {
         return mSize - mPos;
-        }
+    }
+
     inline bool isFull() {
         return (mPos == mSize);
-        }
+    }
+
     inline bool isEmpty() {
         return (mPos == 0);
-        }
+    }
+
     inline size_t appendData(char * data, size_t size) {
         assert(data);
         assert(size > 0);
@@ -108,18 +117,22 @@ public:
         //printf("cur write pos (%d) in page(%d)\n", (int)(mPos), mPageId);
         return ret;
     }
+
     inline void setFlagTail() {
         mIsTailPage = true;
     }
+
     inline void resetFlagTail() {
         mIsTailPage = false;
     }
+
     inline bool isTailPage() {
         return mIsTailPage;
     }
+
     inline void reset() {
         mPos = 0;
-        }
+    }
 
 private:
     int mPageId;
@@ -167,12 +180,14 @@ public:
 
         return true;
     }
+
     void flushQueue() {
         if (mCurPage && !mCurPage->isEmpty()) {
             pushToCache(mCurPage);
             mCurPage.reset();
         }
     }
+
     std::shared_ptr<BufferPage> popQueue() {
         AutoLock lock(mCachedLock);
         if (mCachedPages.size() > 0) {
@@ -183,6 +198,7 @@ public:
             return std::shared_ptr<BufferPage>();
         }
     }
+
     void returnToQueue(std::shared_ptr<BufferPage> page) {
         page->reset();
         AutoLock lock(mFreeLock);
@@ -190,7 +206,6 @@ public:
     }
 
 private:
-
     size_t pushPage(std::shared_ptr<BufferPage> page, char * data, size_t size) {
         return page->appendData(data,size);
     }
@@ -201,7 +216,6 @@ private:
     }
 
     std::shared_ptr<BufferPage> popFreePage() {
-        
         AutoLock lock(mFreeLock);
         if (mFreePages.size() > 0) {
             std::shared_ptr<BufferPage> page = mFreePages.front();
@@ -215,7 +229,7 @@ private:
                 printf("page queue is full\n");
                 assert(0);
                 return std::shared_ptr<BufferPage>();
-                }
+            }
             return page;
         }
     }
@@ -228,7 +242,7 @@ private:
     std::list<std::shared_ptr<BufferPage> > mFreePages;
     mutable android::base::Lock mCachedLock;
     std::list<std::shared_ptr<BufferPage> > mCachedPages;
-    
+
 };
 
 class OpenGLESDataHandler : public android::base::Thread {
@@ -250,7 +264,7 @@ public:
             mHandlerQueue.pop_front();
 
             lock.unlock();
-            
+
             (func)();
         }
         return 0;
@@ -275,7 +289,7 @@ public:
         mHandlerQueue.push_back(func);
         mDataReady.signal();
     }
-    
+
 private:
     bool mIsWorking;
     Lock mQueueLock;
@@ -294,7 +308,7 @@ public:
          mRemoteChannelId = gChannelCount.load();
          gChannelCount++;
 
-         mSocketWaiter = 
+         mSocketWaiter =
             std::shared_ptr<android::base::SocketWaiter>(
             android::base::SocketWaiter::create());
     }
@@ -317,9 +331,9 @@ public:
 
             std::shared_ptr<BufferPage> page = mPendingPages.front();
             mPendingPages.pop_front();
-            
+
             lock.unlock();
-            
+
             if (!onNetworkDataPageReady(page))
                 break;
 
@@ -337,24 +351,25 @@ public:
 
     int sessionId() {
         return mRemoteChannelId;
-        }
-    bool initChannel (size_t queueSize) {
+    }
+
+    bool initChannel(size_t queueSize) {
         mBufQueue.init(queueSize);
 
         // Add Tcp Channel for comunication
-        const char* render_svr_hostname = getenv("render_svr_hostname");
-        if (!render_svr_hostname) {
+        const char* render_server_hostname = getenv("render_server_hostname");
+        if (!render_server_hostname) {
             fprintf(stdout, "Cannot find render server hostname\n");
-            render_svr_hostname = "127.0.0.1";
+            render_server_hostname = "127.0.0.1";
         }
-        const char* render_svr_port = getenv("render_svr_port");
-        if (!render_svr_port) {
+        const char* render_server_port = getenv("render_server_port");
+        if (!render_server_port) {
             fprintf(stdout, "Cannot find render server port\n");
-            render_svr_port = "23432";
+            render_server_port = "23432";
         }
-        printf("new connection %s : %s\n", render_svr_hostname, render_svr_port);
+        printf("new connection %s : %s\n", render_server_hostname, render_server_port);
 
-        int socket = android::base::socketTcp4LoopbackClient(atoi(render_svr_port));
+        int socket = android::base::socketTcp4LoopbackClient(atoi(render_server_port));
         if (socket == -1) {
             fprintf(stderr, "%s: cannot connect to rendering server.(%s)\n", __func__, errno_str);
             return false;
@@ -381,11 +396,11 @@ public:
 
         return true;
     }
-    
+
     bool writeChannel(char * data, size_t size) {
         if (!mIsWorking)
             return false;
-        
+
         mBufQueue.pushQueue(data, size);
         flushOneWrite();
 
@@ -396,11 +411,11 @@ public:
     int socket() {
         return mSocket;
     }
-  
+
     void flushOneFrame() {
         if (!mIsWorking)
             return;
-        
+
         mBufQueue.flushQueue();
 
         while (1) {
@@ -411,21 +426,21 @@ public:
             AutoLock lock(mPendingLock);
             mPendingPages.push_back(page);
         }
-        
+
         mDataReady.signal();
     }
 
     void flushOnePage() {
         if (!mIsWorking)
             return;
-        
+
         std::shared_ptr<BufferPage> page = mBufQueue.popQueue();
         if (!page)
             return;
 
         AutoLock lock(mPendingLock);
         mPendingPages.push_back(page);
-        
+
         mDataReady.signal();
     }
 
@@ -575,7 +590,7 @@ private:
                 ret = android::base::socketSend(mSocket,
                                                 page->beginPos() + sentLen, page->writePos() - page->beginPos() - sentLen);
             }
-            
+
             if (ret < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     continue;
