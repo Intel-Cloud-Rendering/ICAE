@@ -69,15 +69,15 @@ bool TcpChannel::start() {
             size_t bsize = strlen(dump_dir) + 512;
             char* fname = new char[bsize];
 
-            int peerPort = android::base::socketGetPort(mSockFd);
-            snprintf(fname, bsize, "%s/tcp_channel_%p_%d_snd", dump_dir, this, peerPort);
+            int localPort = android::base::socketGetPort(mSockFd);
+            snprintf(fname, bsize, "%s/tcp_channel_%p_%d_snd", dump_dir, this, localPort);
             mDumpSndFP= fopen(fname, "wb");
             if (!mDumpSndFP) {
                 fprintf(stderr, "Warning: send stream dump failed to open file %s\n",
                         fname);
             }
 
-            snprintf(fname, bsize, "%s/tcp_channel_%p_%d_rcv", dump_dir, this, peerPort);
+            snprintf(fname, bsize, "%s/tcp_channel_%p_%d_rcv", dump_dir, this, localPort);
             mDumpRcvFP= fopen(fname, "wb");
             if (!mDumpRcvFP) {
                 fprintf(stderr, "Warning: receive stream dump failed to open file %s\n",

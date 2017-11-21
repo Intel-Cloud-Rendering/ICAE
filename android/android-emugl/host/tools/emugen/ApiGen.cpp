@@ -1357,10 +1357,12 @@ R"(        // Do this on every iteration, as some commands may change the checks
                     // `stream->flush()` which will release `tmpBuf`.
                     fprintf(fp,
                             "\n"
-                            "\t\t\tDEBUG(\"sending (%%p, 0x%%lx) to render, first byte: 0x%%x\","
+                            "\t\t\tif (tcpChannel != nullptr) {\n"
+                            "\t\t\t\tDEBUG(\"sending (%%p, 0x%%lx) to render, first byte: 0x%%x\","
                                          "&tmpBuf[0], totalTmpSize, *(uint8_t*)&tmpBuf[0]);\n"
-                            "\t\t\tsize_t sendSize = tcpChannel->sndBufUntil(&tmpBuf[0], totalTmpSize);\n"
-                            "\t\t\tassert(sendSize == totalTmpSize);"
+                            "\t\t\t\tsize_t sendSize = tcpChannel->sndBufUntil(&tmpBuf[0], totalTmpSize);\n"
+                            "\t\t\t\tassert(sendSize == totalTmpSize);\n"
+                            "\t\t\t}\n"
                             "\n");
                     fprintf(fp,
                             "\t\t\tassert((ptr + packetLen) == end);\n"
