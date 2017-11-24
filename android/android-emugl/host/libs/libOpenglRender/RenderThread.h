@@ -17,7 +17,7 @@
 
 #include "emugl/common/mutex.h"
 #include "emugl/common/thread.h"
-#include "OpenglRender/RemoteRenderChannel.h"
+#include "emugl/common/RemoteRenderChannel.h"
 
 #include <memory>
 

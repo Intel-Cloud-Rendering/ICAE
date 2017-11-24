@@ -23,7 +23,6 @@
 #include "RendererImpl.h"
 #include "RenderChannelImpl.h"
 #include "RenderThreadInfo.h"
-#include "RemoteRenderChannel.h"
 
 #include "OpenGLESDispatch/EGLDispatch.h"
 #include "OpenGLESDispatch/GLESv2Dispatch.h"

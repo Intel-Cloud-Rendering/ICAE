@@ -14,7 +14,7 @@
 #include "RendererImpl.h"
 
 #include "RenderChannelImpl.h"
-#include "RemoteRenderChannel.h"
+#include "emugl/common/RemoteRenderChannel.h"
 
 #include "emugl/common/logging.h"
 #include "ErrorLog.h"
