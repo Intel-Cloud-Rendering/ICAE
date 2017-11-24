@@ -85,30 +85,30 @@ intptr_t RenderThread::main() {
         render_server_port = "23432";
     }
     //printf("new connection %s : %s\n", render_server_hostname, render_server_port);
-    TcpChannel tcpChannel(render_server_hostname, atoi(render_server_port));
-    //TcpChannel tcpChannel(mRemoteChannel->socket(), mRemoteChannel->sessionId());
+    //TcpChannel tcpChannel(render_server_hostname, atoi(render_server_port));
+    TcpChannel tcpChannel(mRemoteChannel->socket(), mRemoteChannel->sessionId());
     TcpChannel *tcpChannelPtr = nullptr;
-    //tcpChannelPtr = &tcpChannel;
-    const char* render_client = getenv("render_client");
-    if (render_client) {
-        bool ret = tcpChannel.start();
-        assert(ret);
-        if (!ret) {
-            printf("connect failed\n");
-            return 0;
-        }
-        tcpChannelPtr = &tcpChannel;
-    }
+    tcpChannelPtr = &tcpChannel;
+    //const char* render_client = getenv("render_client");
+    //if (render_client) {
+    //    bool ret = tcpChannel.start();
+    //    assert(ret);
+    //    if (!ret) {
+    //        printf("connect failed\n");
+    //        return 0;
+    //    }
+    //    tcpChannelPtr = &tcpChannel;
+    //}
 
     // |flags| used to have something, now they're not used.
     (void)flags;
 
-    tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
+    //tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
 
-    //if (!mRemoteChannel->writeChannel((char*)(&flags), sizeof(flags))) {
-    //    D("Warning: render thread could not write data to remote");
-    //    return 0;
-    //}
+    if (!mRemoteChannel->writeChannel((char*)(&flags), sizeof(flags))) {
+        D("Warning: render thread could not write data to remote");
+        return 0;
+    }
 
     RenderThreadInfo tInfo;
     ChecksumCalculatorThreadInfo tChecksumInfo;
@@ -169,11 +169,11 @@ intptr_t RenderThread::main() {
            *(int32_t*)(readBuf.buf() + 4));
 
         int hasSent = readBuf.validData() - stat;
-    	tcpChannel.sndBufUntil((unsigned char*)readBuf.buf() + hasSent, stat);
-    	//if (!mRemoteChannel->writeChannel((char*)(readBuf.buf() + hasSent), stat)) {
-        //    D("Warning: render thread could not write data to remote");
-        //    break;
-        //}
+    	//tcpChannel.sndBufUntil((unsigned char*)readBuf.buf() + hasSent, stat);
+    	if (!mRemoteChannel->writeChannel((char*)(readBuf.buf() + hasSent), stat)) {
+            D("Warning: render thread could not write data to remote");
+            break;
+        }
 
         //
         // log received bandwidth statistics
@@ -262,7 +262,7 @@ intptr_t RenderThread::main() {
     //head.packet_type = 1;
     //head.packet_body_size = 0;
     //tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
-    tcpChannel.stop();
+    //tcpChannel.stop();
 
     mRemoteChannel->closeChannel();
     // exit sync thread, if any.

@@ -926,7 +926,6 @@ int ApiGen::genDecoderImpl(const std::string &filename)
     }
 
     fprintf(fp, "\n\n#include <string.h>\n");
-    fprintf(fp, "\n\n#include <assert.h>\n");
     fprintf(fp, "#include \"%s_opcodes.h\"\n\n", m_basename.c_str());
     fprintf(fp, "#include \"%s_dec.h\"\n\n\n", m_basename.c_str());
     fprintf(fp, "#include \"ProtocolUtils.h\"\n\n");
@@ -994,7 +993,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
     fprintf(fp,
             "\t\tif (tcpChannel != nullptr) {\n"
             "\t\t\tif (isValidRcCode(opcode)) {\n"
-            "\t\t\t\t//printf(\"opcode = %%d\", opcode);\n"
+            "\t\t\t\t//printf(\"opcode = %%d\\n\", opcode);\n"
             "\t\t\t}\n"
             "\t\t}\n");
 
@@ -1024,6 +1023,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
         // TODO - add for return value;
         fprintf(fp, "\t\tcase OP_%s: {\n", e->name().c_str());
 
+
 #if INSTRUMENT_TIMING_HOST
         fprintf(fp, "\t\t\tstruct timespec ts0, ts1, ts2;\n");
         fprintf(fp, "\t\t\tclock_gettime(CLOCK_REALTIME, &ts0);\n");
@@ -1039,6 +1039,27 @@ R"(        // Do this on every iteration, as some commands may change the checks
         }
 
         for (int pass = PASS_FIRST; pass < PASS_LAST; pass++) {
+            if (pass == PASS_FIRST) {
+                if (e->retval().isVoid()) {
+                    
+                    bool hasOutPtr = false;
+                    VarsArray & evars = e->vars();
+                    for (size_t j = 0; j < evars.size(); j++) {
+                        Var *v = & evars[j];
+
+                        if (v->pointerDir() != Var::POINTER_IN) {
+                            hasOutPtr = true;
+                            break;
+                        }
+                    }
+
+                    if (!hasOutPtr) {
+                        fprintf(fp, "\t\t\tif (tcpChannel != nullptr)\n");
+                        fprintf(fp, "\t\t\t\tbreak;\n");
+                    }
+                }
+
+            }
 #if INSTRUMENT_TIMING_HOST
             if (pass == PASS_FunctionCall) {
                 fprintf(fp, "\t\t\tclock_gettime(CLOCK_REALTIME, &ts2);\n");
@@ -1058,11 +1079,11 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 }
             } else if (pass == PASS_DebugPrint) {
                 if (strstr(m_basename.c_str(), "gl")) {
-                    fprintf(fp, "\t\t\t#ifdef CHECK_GL_ERRORS\n");
-                    fprintf(fp, "\t\t\tGLint err = this->glGetError();\n");
-                    fprintf(fp, "\t\t\tif (err) fprintf(stderr, \"%s Error (pre-call): 0x%%X before %s\\n\", err);\n",
+                    fprintf(fp, "\t\t#ifdef CHECK_GL_ERRORS\n");
+                    fprintf(fp, "\t\tGLint err = this->glGetError();\n");
+                    fprintf(fp, "\t\tif (err) fprintf(stderr, \"%s Error (pre-call): 0x%%X before %s\\n\", err);\n",
                             m_basename.c_str(), e->name().c_str());
-                    fprintf(fp, "\t\t\t#endif\n");
+                    fprintf(fp, "\t\t#endif\n");
                 }
                 fprintf(fp,
                         "\t\t\tDEBUG(\"%s(%%p): %s(%s)\\n\", stream",
@@ -1282,7 +1303,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
 
             if (pass == PASS_Protocol) {
                 fprintf(fp,
-                        "\t\t\tif (useChecksum) {\n"
+                        "\t\t\tif (useChecksum && tcpChannel == nullptr) {\n"
                         "\t\t\t\tChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, %s, "
                         "ptr + %s, checksumSize, "
                         "\n\t\t\t\t\t\"%s::decode,"
@@ -1335,14 +1356,10 @@ R"(        // Do this on every iteration, as some commands may change the checks
                     fprintf(fp,
                             "\t\t\ttotalTmpSize += checksumSize;\n"
                             "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n"
-                            "\t\t\tassert(tmpBuf != nullptr);\n"
-                            "\t\t\tmemset(tmpBuf, 0, totalTmpSize);\n");
-
-                    // Receive buffer from render
-                    fprintf(fp,
+                            "\n"
                             "\t\t\tif (tcpChannel != nullptr) {\n"
                             "\t\t\t\ttcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);\n"
-                            "\t\t\t}\n");
+                            "\t\t\t} else {\n");
                 }
             }
 
@@ -1350,24 +1367,12 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 // send back out pointers data as well as retval
                 if (totalTmpBuffExist) {
                     fprintf(fp,
-                            "\t\t\tif (useChecksum) {\n"
+                            "\t\t\tif (useChecksum && tcpChannel == nullptr) {\n"
                             "\t\t\t\tChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, "
                             "&tmpBuf[0], totalTmpSize - checksumSize, "
                             "&tmpBuf[totalTmpSize - checksumSize], checksumSize);\n"
-                            "\t\t\t}\n");
-                    // `tmpBuf` has been filled with "fake ID", need to send before
-                    // `stream->flush()` which will release `tmpBuf`.
-                    fprintf(fp,
-                            "\n"
-                            "\t\t\tif (tcpChannel != nullptr) {\n"
-                            "\t\t\t\tDEBUG(\"sending (%%p, 0x%%lx) to render, first byte: 0x%%x\","
-                                         "&tmpBuf[0], totalTmpSize, *(uint8_t*)&tmpBuf[0]);\n"
-                            "\t\t\t\tsize_t sendSize = tcpChannel->sndBufUntil(&tmpBuf[0], totalTmpSize);\n"
-                            "\t\t\t\tassert(sendSize == totalTmpSize);\n"
                             "\t\t\t}\n"
-                            "\n");
-                    fprintf(fp,
-                            "\t\t\tassert((ptr + packetLen) == end);\n"
+                            "\t\t\t}\n\n"
                             "\t\t\tstream->flush();\n");
                 }
             }
