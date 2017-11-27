@@ -26,7 +26,7 @@ bool RemoteRenderChannel::initChannel(size_t queueSize) {
     }
     printf("new connection %s : %s\n", render_server_hostname, render_server_port);
 
-    int socket = android::base::socketTcp4LoopbackClient(atoi(render_server_port));
+    int socket = android::base::socketTcp4Client(render_server_hostname, atoi(render_server_port));
     if (socket == -1) {
         fprintf(stderr, "%s: cannot connect to rendering server.(%s)\n", __func__, errno_str);
         return false;

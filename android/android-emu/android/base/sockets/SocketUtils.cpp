@@ -25,6 +25,8 @@
 #  include <fcntl.h>
 #  include <netdb.h>
 #  include <netinet/in.h>
+#  include <arpa/inet.h>
+
 #  include <netinet/tcp.h>
 #endif
 
@@ -32,6 +34,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+#include <errno.h>
+
 
 namespace android {
 namespace base {
@@ -382,6 +387,7 @@ union SockAddressStorage {
             return false;
         }
         *this = *addr;
+        setPort(port);
         return true;
     }
 };
@@ -604,12 +610,44 @@ static int socketTcpLoopbackClientFor(int port, int domain) {
     return s.release();
 }
 
+static int socketTcpClientFor(const char * hostname, int port, int domain) {
+    if (!hostname)
+        return -1;
+    
+    ScopedSocket s(socketCreateTcpFor(domain));
+    if (s.get() < 0) {
+        DPLOG(ERROR) << "Could not create TCP socket\n";
+        return -1;
+    }
+
+    SockAddressStorage addr;
+    if (!addr.initResolve(hostname, port)) {
+        return -1;
+    }
+        
+
+    if (::connect(s.get(), &addr.generic, addr.size()) < 0) {
+        return -1;
+    }
+
+    return s.release();
+}
+
+
 int socketTcp4LoopbackClient(int port) {
     return socketTcpLoopbackClientFor(port, AF_INET);
 }
 
 int socketTcp6LoopbackClient(int port) {
     return socketTcpLoopbackClientFor(port, AF_INET6);
+}
+
+int socketTcp4Client(const char * hostname, int port) {
+    return socketTcpClientFor(hostname, port, AF_INET);
+}
+
+int socketTcp6Client(const char * hostname, int port) {
+    return socketTcpClientFor(hostname, port, AF_INET6);
 }
 
 int socketAcceptAny(int serverSocket) {

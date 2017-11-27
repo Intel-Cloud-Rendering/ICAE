@@ -72,6 +72,15 @@ int socketTcp4LoopbackClient(int port);
 // Return new socket on success, or -1/errno on error.
 int socketTcp6LoopbackClient(int port);
 
+// Connect to TCP |port| on loopback interface (i.e. 127.0.0.1).
+// Return new socket on success, or -1/errno on error.
+int socketTcp4Client(const char * hostname, int port);
+
+// Connecto TCP |port| on IPV6 loopback interface (i.e. ::1).
+// Return new socket on success, or -1/errno on error.
+int socketTcp6Client(const char * hostname, int port);
+
+
 // Accept a connection on server |socket|, and return the new connection
 // socket descriptor, or -1/errno on error.
 int socketAcceptAny(int socket);
