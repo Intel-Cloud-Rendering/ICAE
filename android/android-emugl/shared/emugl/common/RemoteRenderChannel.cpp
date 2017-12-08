@@ -102,6 +102,7 @@ void RemoteRenderChannel::flushOneWrite() {
 
 void RemoteRenderChannel::closeChannel() {
     mIsWorking = false;
+    mDataReady.signal();
     wait();
     android::base::socketClose(mSocket);
 }

@@ -256,13 +256,12 @@ public:
         while (mIsWorking) {
 
             AutoLock lock(mPendingLock);
-            while (mPendingPages.size() == 0) {
+            while (mPendingPages.size() == 0 && mIsWorking) {
                 mDataReady.wait(&mPendingLock);
             }
 
-            if (!mIsWorking) {
+            if (!mIsWorking)
                 break;
-            }
 
             //if (mSocketFD.get()) {
             //    mSocketFD->wantWrite();
