@@ -104,7 +104,10 @@ void RemoteRenderChannel::closeChannel() {
     mIsWorking = false;
     mDataReady.signal();
     wait();
+    android::base::socketShutdownWrites(mSocket);
+    android::base::socketShutdownReads(mSocket);
     android::base::socketClose(mSocket);
+    mSocket = -1;
 }
 
 void RemoteRenderChannel::onHostSocketEvent(unsigned events) {
@@ -112,6 +115,21 @@ void RemoteRenderChannel::onHostSocketEvent(unsigned events) {
     //    mSocket->dontWantWrite();
     //    mDataReady.signal();
     //}
+}
+
+void RemoteRenderChannel::notifyCloseToPeer()
+{
+    if (mSocket < 0) {
+        assert(0);
+        return;
+    }
+
+    PagePacketHead head;
+    head.packet_type = 1;
+    head.packet_body_size = 0;
+
+    android::base::socketSendAll(mSocket,
+          &head, PAGE_PACKET_HEAD_LEN);
 }
 
 bool RemoteRenderChannel::onNetworkDataPageReady(std::shared_ptr<BufferPage> page) {
@@ -262,7 +280,7 @@ bool RemoteRenderChannel::onNetworkDataPageReady(std::shared_ptr<BufferPage> pag
 
     }
 */
-    printf("0x%lx %s : send %d + %d\n", android::base::getCurrentThreadId(), __func__, (int)PAGE_PACKET_HEAD_LEN, (int)(page->writePos() - page->beginPos()));
+    //printf("0x%lx %s : send %d + %d\n", android::base::getCurrentThreadId(), __func__, (int)PAGE_PACKET_HEAD_LEN, (int)(page->writePos() - page->beginPos()));
     return true;
 }
 }
