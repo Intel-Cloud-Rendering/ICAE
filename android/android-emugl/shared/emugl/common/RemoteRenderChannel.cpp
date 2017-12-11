@@ -64,7 +64,7 @@ bool RemoteRenderChannel::writeChannel(char * data, size_t size) {
     return true;
 }
 
-void RemoteRenderChannel::flushOneFrame() {
+void RemoteRenderChannel::flushChannel() {
     if (!mIsWorking)
         return;
 
@@ -97,7 +97,11 @@ void RemoteRenderChannel::flushOnePage() {
 }
 
 void RemoteRenderChannel::flushOneWrite() {
-    flushOneFrame();
+    flushChannel();
+}
+
+void RemoteRenderChannel::flushOneFrame() {
+    flushChannel();
 }
 
 void RemoteRenderChannel::closeChannel() {
@@ -130,6 +134,73 @@ void RemoteRenderChannel::notifyCloseToPeer()
 
     android::base::socketSendAll(mSocket,
           &head, PAGE_PACKET_HEAD_LEN);
+}
+
+size_t RemoteRenderChannel::readUntil(char * buf, size_t wantReadLen) {
+    if (mSocket < 0) {
+        assert(0);
+        return -1;
+    }
+
+    ssize_t readLen = 0;
+    while (mIsWorking) {
+        /*
+        mSocketWaiter->update(mSocket, android::base::SocketWaiter::kEventRead);
+        int ret = mSocketWaiter->wait(500);
+        if (ret == 0 && errno == ETIMEDOUT)
+            continue;
+
+        if (ret < 0)
+            return readLen;
+
+        unsigned events = 0;
+        int fd = mSocketWaiter->nextPendingFd(&events);
+        if (fd < 0) {
+            return readLen;
+        }
+
+        if ((events & SocketWaiter::kEventRead) == SocketWaiter::kEventRead) {
+            ssize_t retRead = android::base::socketRecv(mSocket,
+                            buf + readLen, wantReadLen - readLen);
+
+            if (retRead < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    continue;
+                    }
+                else {
+                    android::base::socketClose(mSocket);
+                    assert(0);
+                    return readLen;
+                }
+            }
+
+            readLen += retRead;
+
+            if (readLen == (ssize_t)wantReadLen)
+                break;
+        }
+        */
+        ssize_t retRead = android::base::socketRecv(mSocket,
+                            buf + readLen, wantReadLen - readLen);
+
+        if (retRead < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue;
+                }
+            else {
+                android::base::socketClose(mSocket);
+                assert(0);
+                return readLen;
+            }
+        }
+
+        readLen += retRead;
+
+        if (readLen == (ssize_t)wantReadLen)
+            break;
+    }
+    
+    return readLen;
 }
 
 bool RemoteRenderChannel::onNetworkDataPageReady(std::shared_ptr<BufferPage> page) {
@@ -280,7 +351,7 @@ bool RemoteRenderChannel::onNetworkDataPageReady(std::shared_ptr<BufferPage> pag
 
     }
 */
-    //printf("0x%lx %s : send %d + %d\n", android::base::getCurrentThreadId(), __func__, (int)PAGE_PACKET_HEAD_LEN, (int)(page->writePos() - page->beginPos()));
+    printf("0x%lx %s : send %d + %d\n", android::base::getCurrentThreadId(), __func__, (int)PAGE_PACKET_HEAD_LEN, (int)(page->writePos() - page->beginPos()));
     return true;
 }
 }

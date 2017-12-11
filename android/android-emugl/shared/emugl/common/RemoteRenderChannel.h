@@ -293,12 +293,16 @@ public:
 
     bool writeChannel(char * data, size_t size);
 
+    size_t readUntil(char * buf, size_t wantReadLen);
+
     size_t receiveUntil(char * buf, size_t wantRecvLen);
 
     // be compatible with old interface
     inline int socket() {
         return mSocket;
     }
+
+    void flushChannel();
 
     void flushOneFrame();
 
