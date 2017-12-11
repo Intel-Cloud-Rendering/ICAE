@@ -276,13 +276,11 @@ public:
                 break;
 
             mBufQueue.returnToQueue(page);
-
-            if (!mIsWorking) {
-                break;
-            }
         }
 
-        mIsWorking = false;
+        // if need, enable the following code to send a packet close message to remote render
+        // currently, remote can close the renderthread by detecting the socket disconnection
+        //notifyCloseToPeer();
         printf("exit remote render thread\n");
         return 0;
     }
@@ -313,6 +311,8 @@ private:
     void onHostSocketEvent(unsigned events);
 
     bool onNetworkDataPageReady(std::shared_ptr<BufferPage> page);
+
+    void notifyCloseToPeer();
 private:
     PageQueue mBufQueue;
     //android::base::ScopedSocketWatch mSocketFD;

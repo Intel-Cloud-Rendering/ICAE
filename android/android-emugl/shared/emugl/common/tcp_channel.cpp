@@ -43,7 +43,7 @@ TcpChannel::TcpChannel(const char *hostName, int port) {
 
 TcpChannel::~TcpChannel() {
     AutoLog();
-    stop();
+    //stop();
 
     if (mDumpSndFP != NULL) {
         fclose(mDumpSndFP);
