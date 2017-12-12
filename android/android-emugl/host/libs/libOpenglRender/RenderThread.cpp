@@ -85,9 +85,9 @@ intptr_t RenderThread::main() {
     }
     //printf("new connection %s : %s\n", render_server_hostname, render_server_port);
     //TcpChannel tcpChannel(render_server_hostname, atoi(render_server_port));
-    TcpChannel tcpChannel(mRemoteChannel->socket(), mRemoteChannel->sessionId());
-    TcpChannel *tcpChannelPtr = nullptr;
-    tcpChannelPtr = &tcpChannel;
+    //TcpChannel tcpChannel(mRemoteChannel->socket(), mRemoteChannel->sessionId());
+    //TcpChannel *tcpChannelPtr = nullptr;
+    //tcpChannelPtr = &tcpChannel;
     //const char* render_client = getenv("render_client");
     //if (render_client) {
     //    bool ret = tcpChannel.start();
@@ -216,7 +216,7 @@ intptr_t RenderThread::main() {
             // contexts.
             FrameBuffer::getFB()->lockContextStructureRead();
             size_t last = tInfo.m_glDec.decode(
-                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, tcpChannelPtr);
+                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, mRemoteChannel.get());
             
             if (last > 0) {
                 //printf("gles1 dec consume %d bytes\n", (int)last);
@@ -229,7 +229,7 @@ intptr_t RenderThread::main() {
             // decoder
             //
             last = tInfo.m_gl2Dec.decode(readBuf.buf(), readBuf.validData(),
-                                         &stream, &checksumCalc, tcpChannelPtr);
+                                         &stream, &checksumCalc, mRemoteChannel.get());
             FrameBuffer::getFB()->unlockContextStructureRead();
 
             if (last > 0) {
@@ -243,7 +243,7 @@ intptr_t RenderThread::main() {
             // renderControl decoder
             //
             last = tInfo.m_rcDec.decode(readBuf.buf(), readBuf.validData(),
-                                        &stream, &checksumCalc, tcpChannelPtr);
+                                        &stream, &checksumCalc, mRemoteChannel.get());
             if (last > 0) {
                 //printf("egl dec consume %d bytes\n", (int)last);
                 readBuf.consume(last);

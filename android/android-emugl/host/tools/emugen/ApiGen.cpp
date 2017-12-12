@@ -852,7 +852,7 @@ int ApiGen::genDecoderHeader(const std::string &filename)
     fprintf(fp, "#include \"ChecksumCalculator.h\"\n");
     fprintf(fp, "#include \"%s_%s_context.h\"\n\n\n", m_basename.c_str(), sideString(SERVER_SIDE));
     fprintf(fp, "#include \"emugl/common/logging.h\"\n");
-    fprintf(fp, "#include \"emugl/common/tcp_channel.h\"\n");
+    fprintf(fp, "#include \"emugl/common/RemoteRenderChannel.h\"\n");
 #if INSTRUMENT_TIMING_HOST
     fprintf(fp, "#include \"time.h\"\n");
 #endif
@@ -864,7 +864,7 @@ int ApiGen::genDecoderHeader(const std::string &filename)
 
     fprintf(fp, "struct %s : public %s_%s_context_t {\n\n",
             classname.c_str(), m_basename.c_str(), sideString(SERVER_SIDE));
-    fprintf(fp, "\tsize_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc, emugl::TcpChannel *tcpChannel);\n");
+    fprintf(fp, "\tsize_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc, emugl::RemoteRenderChannel * remoteChannel);\n");
     fprintf(fp, "\n};\n\n");
     fprintf(fp, "#endif  // GUARD_%s\n", classname.c_str());
 
@@ -926,6 +926,7 @@ int ApiGen::genDecoderImpl(const std::string &filename)
     }
 
     fprintf(fp, "\n\n#include <string.h>\n");
+    fprintf(fp, "\n\n#include <assert.h>\n");
     fprintf(fp, "#include \"%s_opcodes.h\"\n\n", m_basename.c_str());
     fprintf(fp, "#include \"%s_dec.h\"\n\n\n", m_basename.c_str());
     fprintf(fp, "#include \"ProtocolUtils.h\"\n\n");
@@ -962,7 +963,7 @@ int ApiGen::genDecoderImpl(const std::string &filename)
     fprintf(fp, "using namespace emugl;\n\n");
 
     // decoder switch;
-    fprintf(fp, "size_t %s::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, TcpChannel *tcpChannel) {\n", classname.c_str());
+    fprintf(fp, "size_t %s::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, RemoteRenderChannel  * remoteChannel) {\n", classname.c_str());
     fprintf(fp,
 "\tif (len < 8) return 0; \n\
 #ifdef CHECK_GL_ERRORS\n\
@@ -991,7 +992,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
     }
 
     fprintf(fp,
-            "\t\tif (tcpChannel != nullptr) {\n"
+            "\t\tif (remoteChannel != nullptr) {\n"
             "\t\t\tif (isValidRcCode(opcode)) {\n"
             "\t\t\t\t//printf(\"opcode = %%d\\n\", opcode);\n"
             "\t\t\t}\n"
@@ -1023,7 +1024,6 @@ R"(        // Do this on every iteration, as some commands may change the checks
         // TODO - add for return value;
         fprintf(fp, "\t\tcase OP_%s: {\n", e->name().c_str());
 
-
 #if INSTRUMENT_TIMING_HOST
         fprintf(fp, "\t\t\tstruct timespec ts0, ts1, ts2;\n");
         fprintf(fp, "\t\t\tclock_gettime(CLOCK_REALTIME, &ts0);\n");
@@ -1054,7 +1054,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
                     }
 
                     if (!hasOutPtr) {
-                        fprintf(fp, "\t\t\tif (tcpChannel != nullptr)\n");
+                        fprintf(fp, "\t\t\tif (remoteChannel != nullptr && opcode != 10028)\n");
                         fprintf(fp, "\t\t\t\tbreak;\n");
                     }
                 }
@@ -1079,14 +1079,14 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 }
             } else if (pass == PASS_DebugPrint) {
                 if (strstr(m_basename.c_str(), "gl")) {
-                    fprintf(fp, "\t\t#ifdef CHECK_GL_ERRORS\n");
-                    fprintf(fp, "\t\tGLint err = this->glGetError();\n");
-                    fprintf(fp, "\t\tif (err) fprintf(stderr, \"%s Error (pre-call): 0x%%X before %s\\n\", err);\n",
+                    fprintf(fp, "\t\t\t#ifdef CHECK_GL_ERRORS\n");
+                    fprintf(fp, "\t\t\tGLint err = this->glGetError();\n");
+                    fprintf(fp, "\t\t\tif (err) fprintf(stderr, \"%s Error (pre-call): 0x%%X before %s\\n\", err);\n",
                             m_basename.c_str(), e->name().c_str());
-                    fprintf(fp, "\t\t#endif\n");
+                    fprintf(fp, "\t\t\t#endif\n");
                 }
                 fprintf(fp,
-                        "\t\t\tDEBUG(\"%s(%%p): %s(%s)\\n\", stream",
+                        "\t\t\t\tDEBUG(\"%s(%%p): %s(%s)\\n\", stream",
                         m_basename.c_str(),
                         e->name().c_str(),
                         printString.c_str());
@@ -1303,7 +1303,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
 
             if (pass == PASS_Protocol) {
                 fprintf(fp,
-                        "\t\t\tif (useChecksum && tcpChannel == nullptr) {\n"
+                        "\t\t\tif (useChecksum && remoteChannel == NULL) {\n"
                         "\t\t\t\tChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, %s, "
                         "ptr + %s, checksumSize, "
                         "\n\t\t\t\t\t\"%s::decode,"
@@ -1357,8 +1357,9 @@ R"(        // Do this on every iteration, as some commands may change the checks
                             "\t\t\ttotalTmpSize += checksumSize;\n"
                             "\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n"
                             "\n"
-                            "\t\t\tif (tcpChannel != nullptr) {\n"
-                            "\t\t\t\ttcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);\n"
+                            "\t\t\tif (remoteChannel != nullptr) {\n"
+                            "\t\t\t\t//remoteChannel->flushChannel();\n"
+                            "\t\t\t\tremoteChannel->readUntil((char*)tmpBuf, totalTmpSize);\n"
                             "\t\t\t} else {\n");
                 }
             }
@@ -1367,11 +1368,11 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 // send back out pointers data as well as retval
                 if (totalTmpBuffExist) {
                     fprintf(fp,
-                            "\t\t\tif (useChecksum && tcpChannel == nullptr) {\n"
-                            "\t\t\t\tChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, "
+                            "\t\t\t\tif (useChecksum) {\n"
+                            "\t\t\t\t\tChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, "
                             "&tmpBuf[0], totalTmpSize - checksumSize, "
                             "&tmpBuf[totalTmpSize - checksumSize], checksumSize);\n"
-                            "\t\t\t}\n"
+                            "\t\t\t\t}\n"
                             "\t\t\t}\n\n"
                             "\t\t\tstream->flush();\n");
                 }

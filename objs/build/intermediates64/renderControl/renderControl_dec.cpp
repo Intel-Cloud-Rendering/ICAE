@@ -3,6 +3,9 @@
 
 
 #include <string.h>
+
+
+#include <assert.h>
 #include "renderControl_opcodes.h"
 
 #include "renderControl_dec.h"
@@ -32,7 +35,7 @@ static inline bool isValidRcCode(int opCode){
 }
 using namespace emugl;
 
-size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, TcpChannel *tcpChannel) {
+size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, RemoteRenderChannel  * remoteChannel) {
 	if (len < 8) return 0; 
 #ifdef CHECK_GL_ERRORS
 	char lastCall[256] = {0};
@@ -47,14 +50,14 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
         // calculation parameters.
         const size_t checksumSize = checksumCalc->checksumByteSize();
         const bool useChecksum = checksumSize > 0;
-		if (tcpChannel != nullptr) {
+		if (remoteChannel != nullptr) {
 			if (isValidRcCode(opcode)) {
 				//printf("opcode = %d\n", opcode);
 			}
 		}
 		switch(opcode) {
 		case OP_rcGetRendererVersion: {
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8, ptr + 8, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcGetRendererVersion: GL checksumCalculator failure\n");
 			}
@@ -62,14 +65,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcGetRendererVersion()\n", stream);
+				DEBUG("renderControl(%p): rcGetRendererVersion()\n", stream);
 			*(GLint *)(&tmpBuf[0]) = 			this->rcGetRendererVersion();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -79,7 +83,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 		case OP_rcGetEGLVersion: {
 			uint32_t size_major __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t size_minor __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4, ptr + 8 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcGetEGLVersion: GL checksumCalculator failure\n");
 			}
@@ -89,18 +93,19 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_major(&tmpBuf[0], size_major);
 			OutputBuffer outptr_minor(&tmpBuf[0 + size_major], size_minor);
-			DEBUG("renderControl(%p): rcGetEGLVersion(%p(%u) %p(%u) )\n", stream, (EGLint*)(outptr_major.get()), size_major, (EGLint*)(outptr_minor.get()), size_minor);
+				DEBUG("renderControl(%p): rcGetEGLVersion(%p(%u) %p(%u) )\n", stream, (EGLint*)(outptr_major.get()), size_major, (EGLint*)(outptr_minor.get()), size_minor);
 			*(EGLint *)(&tmpBuf[0 + size_major + size_minor]) = 			this->rcGetEGLVersion((EGLint*)(outptr_major.get()), (EGLint*)(outptr_minor.get()));
 			outptr_major.flush();
 			outptr_minor.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -111,7 +116,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			EGLenum var_name = Unpack<EGLenum,uint32_t>(ptr + 8);
 			uint32_t size_buffer __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			EGLint var_bufferSize = Unpack<EGLint,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcQueryEGLString: GL checksumCalculator failure\n");
 			}
@@ -120,16 +125,17 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_buffer(&tmpBuf[0], size_buffer);
-			DEBUG("renderControl(%p): rcQueryEGLString(0x%08x %p(%u) 0x%08x )\n", stream, var_name, (void*)(outptr_buffer.get()), size_buffer, var_bufferSize);
+				DEBUG("renderControl(%p): rcQueryEGLString(0x%08x %p(%u) 0x%08x )\n", stream, var_name, (void*)(outptr_buffer.get()), size_buffer, var_bufferSize);
 			*(EGLint *)(&tmpBuf[0 + size_buffer]) = 			this->rcQueryEGLString(var_name, (void*)(outptr_buffer.get()), var_bufferSize);
 			outptr_buffer.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -140,7 +146,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			EGLenum var_name = Unpack<EGLenum,uint32_t>(ptr + 8);
 			uint32_t size_buffer __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			EGLint var_bufferSize = Unpack<EGLint,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcGetGLString: GL checksumCalculator failure\n");
 			}
@@ -149,16 +155,17 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_buffer(&tmpBuf[0], size_buffer);
-			DEBUG("renderControl(%p): rcGetGLString(0x%08x %p(%u) 0x%08x )\n", stream, var_name, (void*)(outptr_buffer.get()), size_buffer, var_bufferSize);
+				DEBUG("renderControl(%p): rcGetGLString(0x%08x %p(%u) 0x%08x )\n", stream, var_name, (void*)(outptr_buffer.get()), size_buffer, var_bufferSize);
 			*(EGLint *)(&tmpBuf[0 + size_buffer]) = 			this->rcGetGLString(var_name, (void*)(outptr_buffer.get()), var_bufferSize);
 			outptr_buffer.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -167,7 +174,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 		}
 		case OP_rcGetNumConfigs: {
 			uint32_t size_numAttribs __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcGetNumConfigs: GL checksumCalculator failure\n");
 			}
@@ -176,16 +183,17 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_numAttribs(&tmpBuf[0], size_numAttribs);
-			DEBUG("renderControl(%p): rcGetNumConfigs(%p(%u) )\n", stream, (uint32_t*)(outptr_numAttribs.get()), size_numAttribs);
+				DEBUG("renderControl(%p): rcGetNumConfigs(%p(%u) )\n", stream, (uint32_t*)(outptr_numAttribs.get()), size_numAttribs);
 			*(EGLint *)(&tmpBuf[0 + size_numAttribs]) = 			this->rcGetNumConfigs((uint32_t*)(outptr_numAttribs.get()));
 			outptr_numAttribs.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -195,7 +203,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 		case OP_rcGetConfigs: {
 			uint32_t var_bufSize = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t size_buffer __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4, ptr + 8 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcGetConfigs: GL checksumCalculator failure\n");
 			}
@@ -204,16 +212,17 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_buffer(&tmpBuf[0], size_buffer);
-			DEBUG("renderControl(%p): rcGetConfigs(0x%08x %p(%u) )\n", stream, var_bufSize, (GLuint*)(outptr_buffer.get()), size_buffer);
+				DEBUG("renderControl(%p): rcGetConfigs(0x%08x %p(%u) )\n", stream, var_bufSize, (GLuint*)(outptr_buffer.get()), size_buffer);
 			*(EGLint *)(&tmpBuf[0 + size_buffer]) = 			this->rcGetConfigs(var_bufSize, (GLuint*)(outptr_buffer.get()));
 			outptr_buffer.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -226,7 +235,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_attribs_size = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + size_attribs);
 			uint32_t size_configs __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + size_attribs + 4);
 			uint32_t var_configs_size = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + size_attribs + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + size_attribs + 4 + 4 + 4, ptr + 8 + 4 + size_attribs + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcChooseConfig: GL checksumCalculator failure\n");
 			}
@@ -235,16 +244,17 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_configs(&tmpBuf[0], size_configs);
-			DEBUG("renderControl(%p): rcChooseConfig(%p(%u) 0x%08x %p(%u) 0x%08x )\n", stream, (EGLint*)(inptr_attribs.get()), size_attribs, var_attribs_size, (uint32_t*)(outptr_configs.get()), size_configs, var_configs_size);
+				DEBUG("renderControl(%p): rcChooseConfig(%p(%u) 0x%08x %p(%u) 0x%08x )\n", stream, (EGLint*)(inptr_attribs.get()), size_attribs, var_attribs_size, (uint32_t*)(outptr_configs.get()), size_configs, var_configs_size);
 			*(EGLint *)(&tmpBuf[0 + size_configs]) = 			this->rcChooseConfig((EGLint*)(inptr_attribs.get()), var_attribs_size, size_configs == 0 ? nullptr : (uint32_t*)(outptr_configs.get()), var_configs_size);
 			outptr_configs.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -253,7 +263,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 		}
 		case OP_rcGetFBParam: {
 			EGLint var_param = Unpack<EGLint,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcGetFBParam: GL checksumCalculator failure\n");
 			}
@@ -261,14 +271,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcGetFBParam(0x%08x )\n", stream, var_param);
+				DEBUG("renderControl(%p): rcGetFBParam(0x%08x )\n", stream, var_param);
 			*(EGLint *)(&tmpBuf[0]) = 			this->rcGetFBParam(var_param);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -279,7 +290,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_config = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t var_share = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			uint32_t var_glVersion = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCreateContext: GL checksumCalculator failure\n");
 			}
@@ -287,14 +298,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcCreateContext(0x%08x 0x%08x 0x%08x )\n", stream, var_config, var_share, var_glVersion);
+				DEBUG("renderControl(%p): rcCreateContext(0x%08x 0x%08x 0x%08x )\n", stream, var_config, var_share, var_glVersion);
 			*(uint32_t *)(&tmpBuf[0]) = 			this->rcCreateContext(var_config, var_share, var_glVersion);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -302,14 +314,14 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcDestroyContext: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_context = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcDestroyContext: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcDestroyContext(0x%08x )\n", stream, var_context);
+				DEBUG("renderControl(%p): rcDestroyContext(0x%08x )\n", stream, var_context);
 			this->rcDestroyContext(var_context);
 			SET_LASTCALL("rcDestroyContext");
 			break;
@@ -318,7 +330,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_config = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t var_width = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			uint32_t var_height = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCreateWindowSurface: GL checksumCalculator failure\n");
 			}
@@ -326,14 +338,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcCreateWindowSurface(0x%08x 0x%08x 0x%08x )\n", stream, var_config, var_width, var_height);
+				DEBUG("renderControl(%p): rcCreateWindowSurface(0x%08x 0x%08x 0x%08x )\n", stream, var_config, var_width, var_height);
 			*(uint32_t *)(&tmpBuf[0]) = 			this->rcCreateWindowSurface(var_config, var_width, var_height);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -341,14 +354,14 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcDestroyWindowSurface: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_windowSurface = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcDestroyWindowSurface: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcDestroyWindowSurface(0x%08x )\n", stream, var_windowSurface);
+				DEBUG("renderControl(%p): rcDestroyWindowSurface(0x%08x )\n", stream, var_windowSurface);
 			this->rcDestroyWindowSurface(var_windowSurface);
 			SET_LASTCALL("rcDestroyWindowSurface");
 			break;
@@ -357,7 +370,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_width = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t var_height = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			GLenum var_internalFormat = Unpack<GLenum,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCreateColorBuffer: GL checksumCalculator failure\n");
 			}
@@ -365,14 +378,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcCreateColorBuffer(0x%08x 0x%08x 0x%08x )\n", stream, var_width, var_height, var_internalFormat);
+				DEBUG("renderControl(%p): rcCreateColorBuffer(0x%08x 0x%08x 0x%08x )\n", stream, var_width, var_height, var_internalFormat);
 			*(uint32_t *)(&tmpBuf[0]) = 			this->rcCreateColorBuffer(var_width, var_height, var_internalFormat);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -380,48 +394,48 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcOpenColorBuffer: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_colorbuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcOpenColorBuffer: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcOpenColorBuffer(0x%08x )\n", stream, var_colorbuffer);
+				DEBUG("renderControl(%p): rcOpenColorBuffer(0x%08x )\n", stream, var_colorbuffer);
 			this->rcOpenColorBuffer(var_colorbuffer);
 			SET_LASTCALL("rcOpenColorBuffer");
 			break;
 		}
 		case OP_rcCloseColorBuffer: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_colorbuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCloseColorBuffer: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcCloseColorBuffer(0x%08x )\n", stream, var_colorbuffer);
+				DEBUG("renderControl(%p): rcCloseColorBuffer(0x%08x )\n", stream, var_colorbuffer);
 			this->rcCloseColorBuffer(var_colorbuffer);
 			SET_LASTCALL("rcCloseColorBuffer");
 			break;
 		}
 		case OP_rcSetWindowColorBuffer: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_windowSurface = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t var_colorBuffer = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4, ptr + 8 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcSetWindowColorBuffer: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcSetWindowColorBuffer(0x%08x 0x%08x )\n", stream, var_windowSurface, var_colorBuffer);
+				DEBUG("renderControl(%p): rcSetWindowColorBuffer(0x%08x 0x%08x )\n", stream, var_windowSurface, var_colorBuffer);
 			this->rcSetWindowColorBuffer(var_windowSurface, var_colorBuffer);
 			SET_LASTCALL("rcSetWindowColorBuffer");
 			break;
 		}
 		case OP_rcFlushWindowColorBuffer: {
 			uint32_t var_windowSurface = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcFlushWindowColorBuffer: GL checksumCalculator failure\n");
 			}
@@ -429,14 +443,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcFlushWindowColorBuffer(0x%08x )\n", stream, var_windowSurface);
+				DEBUG("renderControl(%p): rcFlushWindowColorBuffer(0x%08x )\n", stream, var_windowSurface);
 			*(int *)(&tmpBuf[0]) = 			this->rcFlushWindowColorBuffer(var_windowSurface);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -447,7 +462,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_context = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t var_drawSurf = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			uint32_t var_readSurf = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcMakeCurrent: GL checksumCalculator failure\n");
 			}
@@ -455,14 +470,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcMakeCurrent(0x%08x 0x%08x 0x%08x )\n", stream, var_context, var_drawSurf, var_readSurf);
+				DEBUG("renderControl(%p): rcMakeCurrent(0x%08x 0x%08x 0x%08x )\n", stream, var_context, var_drawSurf, var_readSurf);
 			*(EGLint *)(&tmpBuf[0]) = 			this->rcMakeCurrent(var_context, var_drawSurf, var_readSurf);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -470,53 +486,53 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcFBPost: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_colorBuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcFBPost: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcFBPost(0x%08x )\n", stream, var_colorBuffer);
+				DEBUG("renderControl(%p): rcFBPost(0x%08x )\n", stream, var_colorBuffer);
 			this->rcFBPost(var_colorBuffer);
 			SET_LASTCALL("rcFBPost");
 			break;
 		}
 		case OP_rcFBSetSwapInterval: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			EGLint var_interval = Unpack<EGLint,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcFBSetSwapInterval: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcFBSetSwapInterval(0x%08x )\n", stream, var_interval);
+				DEBUG("renderControl(%p): rcFBSetSwapInterval(0x%08x )\n", stream, var_interval);
 			this->rcFBSetSwapInterval(var_interval);
 			SET_LASTCALL("rcFBSetSwapInterval");
 			break;
 		}
 		case OP_rcBindTexture: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_colorBuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcBindTexture: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcBindTexture(0x%08x )\n", stream, var_colorBuffer);
+				DEBUG("renderControl(%p): rcBindTexture(0x%08x )\n", stream, var_colorBuffer);
 			this->rcBindTexture(var_colorBuffer);
 			SET_LASTCALL("rcBindTexture");
 			break;
 		}
 		case OP_rcBindRenderbuffer: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_colorBuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcBindRenderbuffer: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcBindRenderbuffer(0x%08x )\n", stream, var_colorBuffer);
+				DEBUG("renderControl(%p): rcBindRenderbuffer(0x%08x )\n", stream, var_colorBuffer);
 			this->rcBindRenderbuffer(var_colorBuffer);
 			SET_LASTCALL("rcBindRenderbuffer");
 			break;
@@ -525,7 +541,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_colorbuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
 			EGLint var_postCount = Unpack<EGLint,uint32_t>(ptr + 8 + 4);
 			int var_forRead = Unpack<int,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcColorBufferCacheFlush: GL checksumCalculator failure\n");
 			}
@@ -533,14 +549,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcColorBufferCacheFlush(0x%08x 0x%08x %d )\n", stream, var_colorbuffer, var_postCount, var_forRead);
+				DEBUG("renderControl(%p): rcColorBufferCacheFlush(0x%08x 0x%08x %d )\n", stream, var_colorbuffer, var_postCount, var_forRead);
 			*(EGLint *)(&tmpBuf[0]) = 			this->rcColorBufferCacheFlush(var_colorbuffer, var_postCount, var_forRead);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -556,7 +573,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			GLenum var_format = Unpack<GLenum,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4);
 			GLenum var_type = Unpack<GLenum,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4);
 			uint32_t size_pixels __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcReadColorBuffer: GL checksumCalculator failure\n");
 			}
@@ -564,16 +581,17 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_pixels(&tmpBuf[0], size_pixels);
-			DEBUG("renderControl(%p): rcReadColorBuffer(0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %p(%u) )\n", stream, var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, (void*)(outptr_pixels.get()), size_pixels);
+				DEBUG("renderControl(%p): rcReadColorBuffer(0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %p(%u) )\n", stream, var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, (void*)(outptr_pixels.get()), size_pixels);
 			this->rcReadColorBuffer(var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, (void*)(outptr_pixels.get()));
 			outptr_pixels.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -590,7 +608,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			GLenum var_type = Unpack<GLenum,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4);
 			uint32_t size_pixels __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4);
 			InputBuffer inptr_pixels(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4, size_pixels);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + size_pixels, ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + size_pixels, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcUpdateColorBuffer: GL checksumCalculator failure\n");
 			}
@@ -598,14 +616,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcUpdateColorBuffer(0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %p(%u) )\n", stream, var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, (void*)(inptr_pixels.get()), size_pixels);
+				DEBUG("renderControl(%p): rcUpdateColorBuffer(0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %p(%u) )\n", stream, var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, (void*)(inptr_pixels.get()), size_pixels);
 			*(int *)(&tmpBuf[0]) = 			this->rcUpdateColorBuffer(var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, (void*)(inptr_pixels.get()));
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -614,7 +633,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 		}
 		case OP_rcOpenColorBuffer2: {
 			uint32_t var_colorbuffer = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcOpenColorBuffer2: GL checksumCalculator failure\n");
 			}
@@ -622,14 +641,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcOpenColorBuffer2(0x%08x )\n", stream, var_colorbuffer);
+				DEBUG("renderControl(%p): rcOpenColorBuffer2(0x%08x )\n", stream, var_colorbuffer);
 			*(int *)(&tmpBuf[0]) = 			this->rcOpenColorBuffer2(var_colorbuffer);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -640,7 +660,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_context = Unpack<uint32_t,uint32_t>(ptr + 8);
 			EGLenum var_target = Unpack<EGLenum,uint32_t>(ptr + 8 + 4);
 			GLuint var_buffer = Unpack<GLuint,uint32_t>(ptr + 8 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCreateClientImage: GL checksumCalculator failure\n");
 			}
@@ -648,14 +668,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcCreateClientImage(0x%08x 0x%08x 0x%08x )\n", stream, var_context, var_target, var_buffer);
+				DEBUG("renderControl(%p): rcCreateClientImage(0x%08x 0x%08x 0x%08x )\n", stream, var_context, var_target, var_buffer);
 			*(uint32_t *)(&tmpBuf[0]) = 			this->rcCreateClientImage(var_context, var_target, var_buffer);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -664,7 +685,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 		}
 		case OP_rcDestroyClientImage: {
 			uint32_t var_image = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcDestroyClientImage: GL checksumCalculator failure\n");
 			}
@@ -672,14 +693,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcDestroyClientImage(0x%08x )\n", stream, var_image);
+				DEBUG("renderControl(%p): rcDestroyClientImage(0x%08x )\n", stream, var_image);
 			*(int *)(&tmpBuf[0]) = 			this->rcDestroyClientImage(var_image);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -687,15 +709,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcSelectChecksumHelper: {
-			//if (tcpChannel != nullptr)
-			//	break;
+			if (remoteChannel != nullptr && opcode != 10028)
+				break;
 			uint32_t var_newProtocol = Unpack<uint32_t,uint32_t>(ptr + 8);
 			uint32_t var_reserved = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4, ptr + 8 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcSelectChecksumHelper: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcSelectChecksumHelper(0x%08x 0x%08x )\n", stream, var_newProtocol, var_reserved);
+				DEBUG("renderControl(%p): rcSelectChecksumHelper(0x%08x 0x%08x )\n", stream, var_newProtocol, var_reserved);
 			this->rcSelectChecksumHelper(var_newProtocol, var_reserved);
 			SET_LASTCALL("rcSelectChecksumHelper");
 			break;
@@ -708,7 +730,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			int var_destroy_when_signaled = Unpack<int,uint32_t>(ptr + 8 + 4 + 4 + size_attribs + 4);
 			uint32_t size_glsync_out __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4 + size_attribs + 4 + 4);
 			uint32_t size_syncthread_out __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4 + size_attribs + 4 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + size_attribs + 4 + 4 + 4 + 4, ptr + 8 + 4 + 4 + size_attribs + 4 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCreateSyncKHR: GL checksumCalculator failure\n");
 			}
@@ -717,18 +739,19 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
 			OutputBuffer outptr_glsync_out(&tmpBuf[0], size_glsync_out);
 			OutputBuffer outptr_syncthread_out(&tmpBuf[0 + size_glsync_out], size_syncthread_out);
-			DEBUG("renderControl(%p): rcCreateSyncKHR(0x%08x %p(%u) 0x%08x %d %p(%u) %p(%u) )\n", stream, var_type, (EGLint*)(inptr_attribs.get()), size_attribs, var_num_attribs, var_destroy_when_signaled, (uint64_t*)(outptr_glsync_out.get()), size_glsync_out, (uint64_t*)(outptr_syncthread_out.get()), size_syncthread_out);
+				DEBUG("renderControl(%p): rcCreateSyncKHR(0x%08x %p(%u) 0x%08x %d %p(%u) %p(%u) )\n", stream, var_type, (EGLint*)(inptr_attribs.get()), size_attribs, var_num_attribs, var_destroy_when_signaled, (uint64_t*)(outptr_glsync_out.get()), size_glsync_out, (uint64_t*)(outptr_syncthread_out.get()), size_syncthread_out);
 			this->rcCreateSyncKHR(var_type, (EGLint*)(inptr_attribs.get()), var_num_attribs, var_destroy_when_signaled, (uint64_t*)(outptr_glsync_out.get()), (uint64_t*)(outptr_syncthread_out.get()));
 			outptr_glsync_out.flush();
 			outptr_syncthread_out.flush();
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -739,7 +762,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint64_t var_sync = Unpack<uint64_t,uint64_t>(ptr + 8);
 			EGLint var_flags = Unpack<EGLint,uint32_t>(ptr + 8 + 8);
 			uint64_t var_timeout = Unpack<uint64_t,uint64_t>(ptr + 8 + 8 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 8 + 4 + 8, ptr + 8 + 8 + 4 + 8, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcClientWaitSyncKHR: GL checksumCalculator failure\n");
 			}
@@ -747,14 +770,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcClientWaitSyncKHR(0x%016lx 0x%08x 0x%016lx )\n", stream, var_sync, var_flags, var_timeout);
+				DEBUG("renderControl(%p): rcClientWaitSyncKHR(0x%016lx 0x%08x 0x%016lx )\n", stream, var_sync, var_flags, var_timeout);
 			*(EGLint *)(&tmpBuf[0]) = 			this->rcClientWaitSyncKHR(var_sync, var_flags, var_timeout);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -762,21 +786,21 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcFlushWindowColorBufferAsync: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint32_t var_windowSurface = Unpack<uint32_t,uint32_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4, ptr + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcFlushWindowColorBufferAsync: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcFlushWindowColorBufferAsync(0x%08x )\n", stream, var_windowSurface);
+				DEBUG("renderControl(%p): rcFlushWindowColorBufferAsync(0x%08x )\n", stream, var_windowSurface);
 			this->rcFlushWindowColorBufferAsync(var_windowSurface);
 			SET_LASTCALL("rcFlushWindowColorBufferAsync");
 			break;
 		}
 		case OP_rcDestroySyncKHR: {
 			uint64_t var_sync = Unpack<uint64_t,uint64_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 8, ptr + 8 + 8, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcDestroySyncKHR: GL checksumCalculator failure\n");
 			}
@@ -784,14 +808,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcDestroySyncKHR(0x%016lx )\n", stream, var_sync);
+				DEBUG("renderControl(%p): rcDestroySyncKHR(0x%016lx )\n", stream, var_sync);
 			*(int *)(&tmpBuf[0]) = 			this->rcDestroySyncKHR(var_sync);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -799,14 +824,14 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			break;
 		}
 		case OP_rcSetPuid: {
-			if (tcpChannel != nullptr)
+			if (remoteChannel != nullptr && opcode != 10028)
 				break;
 			uint64_t var_puid = Unpack<uint64_t,uint64_t>(ptr + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 8, ptr + 8 + 8, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcSetPuid: GL checksumCalculator failure\n");
 			}
-			DEBUG("renderControl(%p): rcSetPuid(0x%016lx )\n", stream, var_puid);
+				DEBUG("renderControl(%p): rcSetPuid(0x%016lx )\n", stream, var_puid);
 			this->rcSetPuid(var_puid);
 			SET_LASTCALL("rcSetPuid");
 			break;
@@ -823,7 +848,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			void* var_pixels = stream->getDmaForReading(var_pixels_guest_paddr);
 			uint32_t size_pixels __attribute__((unused)) = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 8);
 			uint32_t var_pixels_size = Unpack<uint32_t,uint32_t>(ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 8);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 8 + 4, ptr + 8 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 8 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcUpdateColorBufferDMA: GL checksumCalculator failure\n");
 			}
@@ -831,15 +856,16 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcUpdateColorBufferDMA(0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %p(%u) 0x%08x )\n", stream, var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, var_pixels, var_pixels_size);
+				DEBUG("renderControl(%p): rcUpdateColorBufferDMA(0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x %p(%u) 0x%08x )\n", stream, var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, var_pixels, var_pixels_size);
 			*(int *)(&tmpBuf[0]) = 			this->rcUpdateColorBufferDMA(var_colorbuffer, var_x, var_y, var_width, var_height, var_format, var_type, var_pixels, var_pixels_size);
 			stream->unlockDma(var_pixels_guest_paddr);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();
@@ -851,7 +877,7 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			uint32_t var_height = Unpack<uint32_t,uint32_t>(ptr + 8 + 4);
 			GLenum var_internalFormat = Unpack<GLenum,uint32_t>(ptr + 8 + 4 + 4);
 			int var_frameworkFormat = Unpack<int,uint32_t>(ptr + 8 + 4 + 4 + 4);
-			if (useChecksum && tcpChannel == nullptr) {
+			if (useChecksum && remoteChannel == NULL) {
 				ChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, 8 + 4 + 4 + 4 + 4, ptr + 8 + 4 + 4 + 4 + 4, checksumSize, 
 					"renderControl_decoder_context_t::decode, OP_rcCreateColorBufferDMA: GL checksumCalculator failure\n");
 			}
@@ -859,14 +885,15 @@ size_t renderControl_decoder_context_t::decode(void *buf, size_t len, IOStream *
 			totalTmpSize += checksumSize;
 			unsigned char *tmpBuf = stream->alloc(totalTmpSize);
 
-			if (tcpChannel != nullptr) {
-				tcpChannel->rcvBufUntil(tmpBuf, totalTmpSize);
+			if (remoteChannel != nullptr) {
+				//remoteChannel->flushChannel();
+				remoteChannel->readUntil((char*)tmpBuf, totalTmpSize);
 			} else {
-			DEBUG("renderControl(%p): rcCreateColorBufferDMA(0x%08x 0x%08x 0x%08x %d )\n", stream, var_width, var_height, var_internalFormat, var_frameworkFormat);
+				DEBUG("renderControl(%p): rcCreateColorBufferDMA(0x%08x 0x%08x 0x%08x %d )\n", stream, var_width, var_height, var_internalFormat, var_frameworkFormat);
 			*(uint32_t *)(&tmpBuf[0]) = 			this->rcCreateColorBufferDMA(var_width, var_height, var_internalFormat, var_frameworkFormat);
-			if (useChecksum && tcpChannel == nullptr) {
-				ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
-			}
+				if (useChecksum) {
+					ChecksumCalculatorThreadInfo::writeChecksum(checksumCalc, &tmpBuf[0], totalTmpSize - checksumSize, &tmpBuf[totalTmpSize - checksumSize], checksumSize);
+				}
 			}
 
 			stream->flush();

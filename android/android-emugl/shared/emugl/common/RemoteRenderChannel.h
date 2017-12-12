@@ -217,7 +217,7 @@ private:
             std::shared_ptr<BufferPage> page = std::make_shared<BufferPage>(mPageCount, mPageSize);
             mPageCount ++ ;
 
-            if (mPageCount > 1000) {
+            if (mPageCount > (8 * 1024 / 4)) {
                 printf("page queue is full\n");
                 assert(0);
                 return std::shared_ptr<BufferPage>();
@@ -242,7 +242,7 @@ static std::atomic_int gChannelCount;
 class RemoteRenderChannel : public android::base::Thread {
 public:
     RemoteRenderChannel () :
-         mBufQueue(10 * 1024),
+         mBufQueue(4 * 1024),
          mSocket(-1), mIsWorking(false) {
          mRemoteChannelId = gChannelCount.load();
          gChannelCount++;
