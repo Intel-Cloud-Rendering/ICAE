@@ -67,6 +67,10 @@ std::unique_ptr<RenderThread> RenderThread::create(
 intptr_t RenderThread::main() {
     ChannelStream stream(mChannel, RenderChannel::Buffer::kSmallSize);
 
+    mRemoteChannel->setUpStream(&stream);
+    mRemoteChannel->startChannel();
+    //mRemoteChannel->modConnection(false);
+
     uint32_t flags = 0;
     if (stream.read(&flags, sizeof(flags)) != sizeof(flags)) {
         return 0;

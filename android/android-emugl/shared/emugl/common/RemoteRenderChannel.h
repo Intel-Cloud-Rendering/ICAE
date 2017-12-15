@@ -22,6 +22,7 @@
 #include "android/base/async/Looper.h"
 #include "android/base/async/ThreadLooper.h"
 #include "android/emulation/VmLock.h"
+#include "OpenglRender/IOStream.h"
 
 #include "android/base/async/ScopedSocketWatch.h"
 #include "android/utils/sockets.h"
@@ -31,8 +32,9 @@
 #include "android/base/sockets/SocketUtils.h"
 #include "android/utils/debug.h"
 
+#include <sys/epoll.h>
+#include <unistd.h>
 
-#include <functional>
 #include <memory>
 #include <list>
 #include <errno.h>
@@ -47,6 +49,13 @@ using ScopedSocket = android::base::ScopedSocket;
 using FdWatch = android::base::Looper::FdWatch;
 using ConditionVariable = android::base::ConditionVariable;
 
+typedef struct _PagePacketHead {
+    int packet_type : 8;
+    //int session_id : 8;
+    int packet_body_size : 24;
+} __attribute__ ((packed)) PagePacketHead;
+
+#define PAGE_PACKET_HEAD_LEN       (sizeof(PagePacketHead))
 
 class BufferPage {
 public:
@@ -242,60 +251,45 @@ static std::atomic_int gChannelCount;
 class RemoteRenderChannel : public android::base::Thread {
 public:
     RemoteRenderChannel () :
+         mEpollFD(-1),
          mBufQueue(4 * 1024),
-         mSocket(-1), mIsWorking(false) {
+         mSocket(-1), mIsWorking(true),
+         mUpStream(NULL), mWantReadSize(0) {
          mRemoteChannelId = gChannelCount.load();
          gChannelCount++;
 
-         mSocketWaiter =
-            std::shared_ptr<android::base::SocketWaiter>(
-            android::base::SocketWaiter::create());
+         //mSocketWaiter =
+         //   std::shared_ptr<android::base::SocketWaiter>(
+         //   android::base::SocketWaiter::create());
+
+         mEpollFD = ::epoll_create(1);
     }
 
-    virtual intptr_t main() override {
-        while (mIsWorking) {
+    ~RemoteRenderChannel() {
+        if (mEpollFD > 0)
+            ::close(mEpollFD);
 
-            AutoLock lock(mPendingLock);
-            while (mPendingPages.size() == 0 && mIsWorking) {
-                mDataReady.wait(&mPendingLock);
-            }
-
-            if (!mIsWorking)
-                break;
-
-            //if (mSocketFD.get()) {
-            //    mSocketFD->wantWrite();
-            //}
-
-            std::shared_ptr<BufferPage> page = mPendingPages.front();
-            mPendingPages.pop_front();
-
-            lock.unlock();
-
-            if (!onNetworkDataPageReady(page))
-                break;
-
-            mBufQueue.returnToQueue(page);
-        }
-
-        // if need, enable the following code to send a packet close message to remote render
-        // currently, remote can close the renderthread by detecting the socket disconnection
-        //notifyCloseToPeer();
-        printf("exit remote render thread\n");
-        return 0;
+        mEpollFD = -1;
     }
+
+    virtual intptr_t main() override;
 
     inline int sessionId() {
         return mRemoteChannelId;
     }
 
+    void startChannel();
+
+    void setUpStream(IOStream * stream) {
+        mUpStream = stream;
+    }
+
     bool initChannel(size_t queueSize);
 
+    void modConnection(bool askWrite);
     bool writeChannel(char * data, size_t size);
 
-    size_t readUntil(char * buf, size_t wantReadLen);
-
-    size_t receiveUntil(char * buf, size_t wantRecvLen);
+    bool readChannel(size_t wantReadLen);
 
     // be compatible with old interface
     inline int socket() {
@@ -310,18 +304,22 @@ public:
 
     void flushOneWrite();
 
+    void exitChannel();
     void closeChannel();
 private:
     void onHostSocketEvent(unsigned events);
 
-    bool onNetworkDataPageReady(std::shared_ptr<BufferPage> page);
+    bool onNetworkSndDataHeadReady(PagePacketHead& head, size_t * pOffset);
+    bool onNetworkSndDataPageReady(std::shared_ptr<BufferPage> page, size_t * pOffset);
+    bool onNetworkRecvDataReady(char * buf, size_t * pOffset, size_t wantReadLen);
 
     void notifyCloseToPeer();
 private:
+    int mEpollFD;
     PageQueue mBufQueue;
     //android::base::ScopedSocketWatch mSocketFD;
     int mSocket;
-    std::shared_ptr<android::base::SocketWaiter> mSocketWaiter;
+    //std::shared_ptr<android::base::SocketWaiter> mSocketWaiter;
 
     std::atomic_bool mIsWorking;
 
@@ -330,6 +328,10 @@ private:
     std::list<std::shared_ptr<BufferPage> > mPendingPages;
 
     int mRemoteChannelId;
+
+    IOStream * mUpStream;
+
+    std::atomic_int mWantReadSize;
 };
 
 // Shared pointer to RenderChannel instance.

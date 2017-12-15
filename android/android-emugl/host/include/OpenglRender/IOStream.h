@@ -15,12 +15,21 @@
 */
 #pragma once
 
-#include "ErrorLog.h"
+//#include "ErrorLog.h"
 
 #include <assert.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <stdio.h>
+#define ERR(...)    fprintf(stderr, __VA_ARGS__)
+#ifdef EMUGL_DEBUG
+#    define DBG(...)    fprintf(stderr, __VA_ARGS__)
+#else
+#    define DBG(...)    ((void)0)
+#endif
+
 
 class IOStream {
 protected:
@@ -73,12 +82,23 @@ public:
         return stat;
     }
 
+    int flush(size_t size) {
+        if (!m_buf || m_free == m_bufsize) return 0;
+
+        int stat = commitBuffer(size);
+        m_buf = NULL;
+        m_free = 0;
+        return stat;
+    }
+
     virtual void* getDmaForReading(uint64_t guest_paddr) = 0;
     virtual void unlockDma(uint64_t guest_paddr) = 0;
 
 protected:
     virtual void *allocBuffer(size_t minSize) = 0;
+
     virtual int commitBuffer(size_t size) = 0;
+    
     virtual const unsigned char *readRaw(void *buf, size_t *inout_len) = 0;
 
 private:
