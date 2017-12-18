@@ -33,6 +33,7 @@ host_common_SRC_FILES := \
     RendererImpl.cpp \
     RenderLibImpl.cpp \
     RenderThread.cpp \
+    RemoteRenderChannel.cpp \
     RenderThreadInfo.cpp \
     render_api.cpp \
     RenderWindow.cpp \

@@ -18,17 +18,12 @@
 #include "android/base/synchronization/Lock.h"
 #include "android/base/synchronization/ConditionVariable.h"
 
-#include "thread.h"
-#include "android/base/async/Looper.h"
-#include "android/base/async/ThreadLooper.h"
+#include "emugl/common/thread.h"
 #include "android/emulation/VmLock.h"
 #include "OpenglRender/IOStream.h"
 
-#include "android/base/async/ScopedSocketWatch.h"
 #include "android/utils/sockets.h"
-#include "android/base/sockets/SocketWaiter.h"
 
-#include "android/base/sockets/ScopedSocket.h"
 #include "android/base/sockets/SocketUtils.h"
 #include "android/utils/debug.h"
 
@@ -42,11 +37,11 @@
 
 namespace emugl {
 
-using SocketWaiter = android::base::SocketWaiter;
+class ChannelStream;
+
 using Lock = android::base::Lock;
 using AutoLock = android::base::AutoLock;
-using ScopedSocket = android::base::ScopedSocket;
-using FdWatch = android::base::Looper::FdWatch;
+
 using ConditionVariable = android::base::ConditionVariable;
 
 typedef struct _PagePacketHead {
@@ -278,35 +273,33 @@ public:
         return mRemoteChannelId;
     }
 
-    void startChannel();
-
     void setUpStream(IOStream * stream) {
         mUpStream = stream;
     }
 
-    bool initChannel(size_t queueSize);
+    void startChannel();
 
-    void modConnection(bool askWrite);
+    bool initChannel(size_t queueSize);
+    
     bool writeChannel(char * data, size_t size);
 
     bool readChannel(size_t wantReadLen);
 
-    // be compatible with old interface
-    inline int socket() {
-        return mSocket;
-    }
-
     void flushChannel();
+    
+    void closeChannel();
+private:
+    
+    void modConnection(bool askWrite);
+    
+    void exitChannel();
 
     void flushOneFrame();
 
     void flushOnePage();
 
     void flushOneWrite();
-
-    void exitChannel();
-    void closeChannel();
-private:
+    
     void onHostSocketEvent(unsigned events);
 
     bool onNetworkSndDataHeadReady(PagePacketHead& head, size_t * pOffset);

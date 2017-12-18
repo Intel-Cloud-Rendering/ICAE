@@ -852,7 +852,7 @@ int ApiGen::genDecoderHeader(const std::string &filename)
     fprintf(fp, "#include \"ChecksumCalculator.h\"\n");
     fprintf(fp, "#include \"%s_%s_context.h\"\n\n\n", m_basename.c_str(), sideString(SERVER_SIDE));
     fprintf(fp, "#include \"emugl/common/logging.h\"\n");
-    fprintf(fp, "#include \"emugl/common/RemoteRenderChannel.h\"\n");
+
 #if INSTRUMENT_TIMING_HOST
     fprintf(fp, "#include \"time.h\"\n");
 #endif
@@ -864,7 +864,7 @@ int ApiGen::genDecoderHeader(const std::string &filename)
 
     fprintf(fp, "struct %s : public %s_%s_context_t {\n\n",
             classname.c_str(), m_basename.c_str(), sideString(SERVER_SIDE));
-    fprintf(fp, "\tsize_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc, emugl::RemoteRenderChannel * remoteChannel);\n");
+    fprintf(fp, "\tsize_t decode(void *buf, size_t bufsize, IOStream *stream, ChecksumCalculator* checksumCalc, size_t * pRetSize);\n");
     fprintf(fp, "\n};\n\n");
     fprintf(fp, "#endif  // GUARD_%s\n", classname.c_str());
 
@@ -963,14 +963,17 @@ int ApiGen::genDecoderImpl(const std::string &filename)
     fprintf(fp, "using namespace emugl;\n\n");
 
     // decoder switch;
-    fprintf(fp, "size_t %s::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, RemoteRenderChannel  * remoteChannel) {\n", classname.c_str());
+    fprintf(fp, "size_t %s::decode(void *buf, size_t len, IOStream *stream, ChecksumCalculator* checksumCalc, size_t * pRetSize) {\n", classname.c_str());
     fprintf(fp,
 "\tif (len < 8) return 0; \n\
 #ifdef CHECK_GL_ERRORS\n\
 \tchar lastCall[256] = {0};\n\
 #endif\n\
 \tunsigned char *ptr = (unsigned char *)buf;\n\
-\tconst unsigned char* const end = (const unsigned char*)buf + len;\n");
+\tconst unsigned char* const end = (const unsigned char*)buf + len;\n\
+\tif (pRetSize != nullptr) {\n\
+\t\t*pRetSize = 0;\n\
+\t}\n");
     if (!changesChecksum) {
         fprintf(fp,
 R"(    const size_t checksumSize = checksumCalc->checksumByteSize();
@@ -992,7 +995,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
     }
 
     fprintf(fp,
-            "\t\tif (remoteChannel != nullptr) {\n"
+            "\t\tif (pRetSize != nullptr) {\n"
             "\t\t\tif (isValidRcCode(opcode)) {\n"
             "\t\t\t\t//printf(\"opcode = %%d\\n\", opcode);\n"
             "\t\t\t}\n"
@@ -1054,7 +1057,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
                     }
 
                     if (!hasOutPtr) {
-                        fprintf(fp, "\t\t\tif (remoteChannel != nullptr && opcode != 10028)\n");
+                        fprintf(fp, "\t\t\tif (pRetSize != nullptr && opcode != 10028)\n");
                         fprintf(fp, "\t\t\t\tbreak;\n");
                     }
                 }
@@ -1303,7 +1306,7 @@ R"(        // Do this on every iteration, as some commands may change the checks
 
             if (pass == PASS_Protocol) {
                 fprintf(fp,
-                        "\t\t\tif (useChecksum && remoteChannel == NULL) {\n"
+                        "\t\t\tif (useChecksum && pRetSize == NULL) {\n"
                         "\t\t\t\tChecksumCalculatorThreadInfo::validOrDie(checksumCalc, ptr, %s, "
                         "ptr + %s, checksumSize, "
                         "\n\t\t\t\t\t\"%s::decode,"
@@ -1355,9 +1358,8 @@ R"(        // Do this on every iteration, as some commands may change the checks
                 if (totalTmpBuffExist) {
                     fprintf(fp,
                             "\t\t\ttotalTmpSize += checksumSize;\n"
-                            "\t\t\tif (remoteChannel != nullptr) {\n"
-                            "\t\t\t\t//remoteChannel->flushChannel();\n"
-                            "\t\t\t\tremoteChannel->readChannel(totalTmpSize);\n"
+                            "\t\t\tif (pRetSize != nullptr) {\n"
+                            "\t\t\t\t*pRetSize += totalTmpSize;\n"
                             "\t\t\t} else {\n"
                             "\t\t\t\tunsigned char *tmpBuf = stream->alloc(totalTmpSize);\n"
                             "\n");

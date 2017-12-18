@@ -36,8 +36,6 @@
 #define EMUGL_DEBUG_LEVEL 0
 #include "emugl/common/debug.h"
 
-#include "emugl/common/tcp_channel.h"
-
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -201,6 +199,7 @@ intptr_t RenderThread::main() {
         }
 
         bool progress;
+        size_t retSize = 0;
         do {
             progress = false;
 
@@ -220,7 +219,7 @@ intptr_t RenderThread::main() {
             // contexts.
             FrameBuffer::getFB()->lockContextStructureRead();
             size_t last = tInfo.m_glDec.decode(
-                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, mRemoteChannel.get());
+                    readBuf.buf(), readBuf.validData(), &stream, &checksumCalc, &retSize);
             
             if (last > 0) {
                 //printf("gles1 dec consume %d bytes\n", (int)last);
@@ -233,7 +232,7 @@ intptr_t RenderThread::main() {
             // decoder
             //
             last = tInfo.m_gl2Dec.decode(readBuf.buf(), readBuf.validData(),
-                                         &stream, &checksumCalc, mRemoteChannel.get());
+                                         &stream, &checksumCalc, &retSize);
             FrameBuffer::getFB()->unlockContextStructureRead();
 
             if (last > 0) {
@@ -247,13 +246,15 @@ intptr_t RenderThread::main() {
             // renderControl decoder
             //
             last = tInfo.m_rcDec.decode(readBuf.buf(), readBuf.validData(),
-                                        &stream, &checksumCalc, mRemoteChannel.get());
+                                        &stream, &checksumCalc, &retSize);
             if (last > 0) {
                 //printf("egl dec consume %d bytes\n", (int)last);
                 readBuf.consume(last);
                 progress = true;
             }
         } while (progress);
+
+        mRemoteChannel->readChannel(retSize);
 
         //printf("after dec %d bytes left\n", (int)readBuf.validData());
     }
