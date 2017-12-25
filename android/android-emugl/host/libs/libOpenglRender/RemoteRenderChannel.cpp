@@ -53,10 +53,14 @@ intptr_t RemoteRenderChannel::main() {
                 if (readBuf == NULL) {
                     rwLen = 0;
                     readBufSize = (size_t)mWantReadSize;
-                    if (readBufSize == 0) {
+                    if (readBufSize <= 0) {
+                        // in this case, data from peer arrived before decoding
+                        // thus, we cannot know the recving data size
+                        // make a assumtion first, use a default buffer to receive the data
+                        // then update the received data size later.
                         printf("unknow size data ready, possible hang up occur !!!!!!!!!!!!!\n");
                         unKnownSizeDataReady = true;
-                        readBufSize = 512;
+                        readBufSize = 512; //because channel buffer default size is 512
                     }
 
                     readBuf = mUpStream->alloc(readBufSize);
@@ -122,7 +126,6 @@ intptr_t RemoteRenderChannel::main() {
                             rwLen = 0;
                         } else
                             break;
-                        
                     } else {
                         exitChannel();
                         break;

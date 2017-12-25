@@ -85,26 +85,9 @@ intptr_t RenderThread::main() {
         fprintf(stdout, "Cannot find render server port\n");
         render_server_port = "23432";
     }
-    //printf("new connection %s : %s\n", render_server_hostname, render_server_port);
-    //TcpChannel tcpChannel(render_server_hostname, atoi(render_server_port));
-    //TcpChannel tcpChannel(mRemoteChannel->socket(), mRemoteChannel->sessionId());
-    //TcpChannel *tcpChannelPtr = nullptr;
-    //tcpChannelPtr = &tcpChannel;
-    //const char* render_client = getenv("render_client");
-    //if (render_client) {
-    //    bool ret = tcpChannel.start();
-    //    assert(ret);
-    //    if (!ret) {
-    //        printf("connect failed\n");
-    //        return 0;
-    //    }
-    //    tcpChannelPtr = &tcpChannel;
-    //}
 
     // |flags| used to have something, now they're not used.
     (void)flags;
-
-    //tcpChannel.sndBufUntil((unsigned char*)&flags, sizeof(flags));
 
     if (!mRemoteChannel->writeChannel((char*)(&flags), sizeof(flags))) {
         D("Warning: render thread could not write data to remote");
@@ -135,7 +118,7 @@ intptr_t RenderThread::main() {
     if (dump_dir) {
         size_t bsize = strlen(dump_dir) + 32;
         char* fname = new char[bsize];
-        snprintf(fname, bsize, "%s/stream_%p", dump_dir, this);
+        snprintf(fname, bsize, "%s/stream_of_session_%d", dump_dir, mRemoteChannel->sessionId());
         dumpFP = fopen(fname, "wb");
         if (!dumpFP) {
             fprintf(stderr, "Warning: stream dump failed to open file %s\n",
@@ -262,11 +245,6 @@ intptr_t RenderThread::main() {
     if (dumpFP) {
         fclose(dumpFP);
     }
-
-    //head.packet_type = 1;
-    //head.packet_body_size = 0;
-    //tcpChannel.sndBufUntil((unsigned char*)&head, PACKET_HEAD_LEN);
-    //tcpChannel.stop();
 
     mRemoteChannel->closeChannel();
     // exit sync thread, if any.
