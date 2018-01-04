@@ -12,6 +12,7 @@ export LC_ALL=C
 
 PROGDIR=$(dirname "$0")
 VERBOSE=1
+EMUDIR=$(realpath ${PROGDIR}/../../../)
 
 MINGW=
 NO_TESTS=
@@ -42,6 +43,9 @@ for OPT; do
             ;;
         --debug)
             OPTDEBUG=true
+            ;;
+        --emudir=*)
+            EMUDIR=${OPT##--emudir=}
             ;;
     esac
 done
@@ -125,6 +129,13 @@ fi
 cd "$PROGDIR"/..
 rm -rf "$OUT_DIR"
 echo "Configuring build."
+
+for dir in $(ls -d rrndr-prebuilts/*)
+do
+    echo "Installing prebuilts ${dir} ..."
+    ln -sf $(realpath ${dir}) ${EMUDIR}/prebuilts/android-emulator-build/common
+done
+
 export IN_ANDROID_REBUILD_SH=1
 run android/configure.sh --out-dir=$OUT_DIR "$@" ||
     panic "Configuration error, please run ./android/configure.sh to see why."

@@ -1,0 +1,14 @@
+prefix=/mnt/Videos/RRndr-release/prebuilts/android-emulator-build/common/ffmpeg_qsv_331/linux-x86_64
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libpostproc
+Description: FFmpeg postprocessing library
+Version: 54.5.100
+Requires: libavutil >= 55.58.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lpostproc 
+Libs.private: 
+Cflags: -I${includedir}

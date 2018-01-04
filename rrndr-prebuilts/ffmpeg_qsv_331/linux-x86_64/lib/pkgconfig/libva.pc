@@ -1,0 +1,11 @@
+prefix=/home/media/Videos/RRndr-release/prebuilts/android-emulator-build/common/ffmpeg_qsv_331/linux-x86_64
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+driverdir=/opt/intel/mediasdk/lib64
+
+Name: libva
+Description: Userspace Video Acceleration (VA) core interface
+Version: 0.99.0
+Libs: -L${libdir} -lva
+Cflags: -I${includedir}

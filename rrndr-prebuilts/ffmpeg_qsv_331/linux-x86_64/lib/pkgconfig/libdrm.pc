@@ -1,0 +1,10 @@
+prefix=/home/media/Videos/RRndr-release/prebuilts/android-emulator-build/common/ffmpeg_qsv_331/linux-x86_64
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libdrm
+Description: Userspace interface to kernel DRM services
+Version: 2.4.66
+Libs: -L${libdir} -ldrm
+Cflags: -I${includedir} -I${includedir}/libdrm

@@ -170,6 +170,7 @@ int main(int argc, char **argv)
 #include "android-qemu2-glue/qemu-control-impl.h"
 #include "android-qemu2-glue/qemu-setup.h"
 #include "android/camera/camera-service.h"
+#include "android/utils/streaming.h"
 
 #include "hw/input/goldfish_events.h"
 
@@ -3259,6 +3260,45 @@ int main(int argc, char **argv)
     return res;
 }
 
+#ifdef CONFIG_ANDROID
+static void RRndr_notify(void *opaque, audcnotification_e cmd)
+{
+    (void) opaque;
+    (void) cmd;
+}
+static void RRndr_capture(void *opaque, void *buf, int size)
+{
+    struct RRndrStream *st = opaque;
+    RRndr_write(st, buf, size);
+}
+static void RRndr_destroy(void *opaque)
+{
+    struct RRndrStream *st = opaque;
+    RRndr_delete(st);
+}
+
+static int start_audio_capture(const char *path)
+{
+    struct audsettings as;
+    struct audio_capture_ops ops;
+    CaptureVoiceOut *out;
+    struct RRndrStream *st = RRndr_create_audio(2, 44100, AUD_FMT_S16, path);
+
+    as.freq       = 44100;
+    as.nchannels  = 2;
+    as.fmt        = AUD_FMT_S16;
+    as.endianness = 0;
+
+    ops.notify  = RRndr_notify;
+    ops.capture = RRndr_capture;
+    ops.destroy = RRndr_destroy;
+
+    out = AUD_add_capture(&as, &ops, st);
+
+    return 0;
+}
+#endif
+
 static int main_impl(int argc, char** argv)
 {
     int i;
@@ -5329,6 +5369,13 @@ static int main_impl(int argc, char** argv)
 #endif  // CONFIG_ANDROID
 
     trace_init_vcpu_events();
+#ifdef CONFIG_ANDROID
+    const char *audio_url = getenv("AUDIO_URL");
+    if (audio_url) {
+        printf("Registering audio capture.\n");
+        start_audio_capture(audio_url);
+    }
+#endif
     main_loop();
     replay_disable_events();
 

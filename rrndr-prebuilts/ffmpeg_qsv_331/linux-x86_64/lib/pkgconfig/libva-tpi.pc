@@ -1,0 +1,11 @@
+prefix=/home/media/Videos/RRndr-release/prebuilts/android-emulator-build/common/ffmpeg_qsv_331/linux-x86_64
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libva-tpi
+Description: Userspace Video Acceleration (VA) 3rd party interface
+Requires: libva
+Version: 0.99.0
+Libs: -L${libdir} -lva-tpi
+Cflags: -I${includedir}

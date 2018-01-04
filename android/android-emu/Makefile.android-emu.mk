@@ -219,6 +219,9 @@ LOCAL_C_INCLUDES := \
     $(LIBEXT4_UTILS_INCLUDES) \
     $(LIBPNG_INCLUDES) \
     $(ZLIB_INCLUDES) \
+    $(FFMPEG_QSV_331_INCLUDES) \
+    $(LIBMFX_INCLUDES) \
+    $(LIBTRANS_INCLUDES) \
 
 LOCAL_SRC_FILES := \
     android/adb-server.cpp \
@@ -389,6 +392,7 @@ LOCAL_SRC_FILES := \
     android/utils/socket_drainer.cpp \
     android/utils/sockets.c \
     android/utils/looper.cpp \
+    android/utils/streaming.cpp \
     android/wear-agent/android_wear_agent.cpp \
     android/wear-agent/WearAgent.cpp \
     android/wear-agent/PairUpWearPhone.cpp \
@@ -436,6 +440,9 @@ ANDROID_EMU_STATIC_LIBRARIES := \
     emulator-libpng \
     emulator-libwebp \
     emulator-zlib \
+    emulator-libtrans \
+    $(FFMPEG_QSV_331_STATIC_LIBRARIES) \
+    emulator-libmfx \
     $(METRICS_PROTO_STATIC_LIBRARIES) \
     $(LIBMMAN_WIN32_STATIC_LIBRARIES) \
     $(FEATURECONTROL_PROTO_STATIC_LIBRARIES)
@@ -444,6 +451,7 @@ ANDROID_EMU_LDLIBS := \
     $(ANDROID_EMU_BASE_LDLIBS) \
     $(LIBCURL_LDLIBS) \
     $(BREAKPAD_CLIENT_LDLIBS) \
+    $(FFMPEG_QSV_331_LDLIBS) \
 
 ifeq ($(BUILD_TARGET_OS),windows)
 # For capCreateCaptureWindow used in camera-capture-windows.cpp

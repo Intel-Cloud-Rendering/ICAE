@@ -628,6 +628,12 @@ probe_prebuilts_dir "ffmpeg" FFMPEG_PREBUILTS_DIR common/ffmpeg
 ###
 probe_prebuilts_dir "x264" X264_PREBUILTS_DIR common/x264
 
+probe_prebuilts_dir "libtrans" LIBTRANS_PREBUILTS_DIR common/libtrans
+
+probe_prebuilts_dir "libmfx" LIBMFX_PREBUILTS_DIR common/mfx
+
+probe_prebuilts_dir "libffmpeg_qsv_331" FFMPEG_QSV_331_PREBUILTS_DIR common/ffmpeg_qsv_331
+
 # create the objs directory that is going to contain all generated files
 # including the configuration ones
 #
@@ -1058,6 +1064,9 @@ echo "LIBUUID_PREBUILTS_DIR := $E2FSPROGS_PREBUILTS_DIR" >> $config_mk
 echo "PROTOBUF_PREBUILTS_DIR := $PROTOBUF_PREBUILTS_DIR" >> $config_mk
 echo "FFMPEG_PREBUILTS_DIR := $FFMPEG_PREBUILTS_DIR" >> $config_mk
 echo "X264_PREBUILTS_DIR := $X264_PREBUILTS_DIR" >> $config_mk
+echo "LIBTRANS_PREBUILTS_DIR := $LIBTRANS_PREBUILTS_DIR" >> $config_mk
+echo "LIBMFX_PREBUILTS_DIR := $LIBMFX_PREBUILTS_DIR" >> $config_mk
+echo "FFMPEG_QSV_331_PREBUILTS_DIR := $FFMPEG_QSV_331_PREBUILTS_DIR" >> $config_mk
 
 if [ $OPTION_DEBUG = "yes" ] ; then
     echo "BUILD_DEBUG := true" >> $config_mk
