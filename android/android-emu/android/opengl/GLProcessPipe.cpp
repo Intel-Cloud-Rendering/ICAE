@@ -16,6 +16,32 @@
 #include <atomic>
 #include <memory>
 
+// Set to 1 or 2 for debug traces
+#define DEBUG 0
+
+#if DEBUG >= 1
+#define D(...) printf(__VA_ARGS__), printf("\n"), fflush(stdout)
+#else
+#define D(...) ((void)0)
+#endif
+
+#if DEBUG >= 2
+#define DD(...) printf(__VA_ARGS__), printf("\n"), fflush(stdout)
+#else
+#define DD(...) ((void)0)
+#endif
+
+using ChannelBuffer = emugl::RenderChannel::Buffer;
+using emugl::RenderChannel;
+using emugl::RenderChannelPtr;
+
+typedef struct szGLCommandPacketSetPuid {
+    uint32_t flag;
+    uint32_t opcode;
+    uint32_t len;
+    uint64_t puid;
+} __attribute__ ((packed)) GLCommandPacketSetPuid;
+
 namespace android {
 namespace opengl {
 
@@ -40,17 +66,39 @@ public:
         Service() : AndroidPipe::Service("GLProcessPipe") {}
 
         virtual AndroidPipe* create(void* mHwPipe, const char* args) override {
-            return new GLProcessPipe(mHwPipe, this);
+            auto renderer = android_getOpenglesRenderer();
+            if (!renderer) {
+                // This should never happen, unless there is a bug in the
+                // emulator's initialization, or the system image.
+                D("Trying to open the OpenGLES pipe without GPU emulation!");
+                return nullptr;
+            }
+            
+            return new GLProcessPipe(mHwPipe, this, renderer);
         }
     };
 
-    GLProcessPipe(void* hwPipe, Service* service) : AndroidPipe(hwPipe, service) {
+    GLProcessPipe(void* hwPipe, Service* service, 
+        const emugl::RendererPtr& renderer) : AndroidPipe(hwPipe, service) {
+
         m_uniqueId = ++s_headId;
+
+        mHasSetPuid = false;
+
+        mChannel = renderer->createRenderChannel();
+        if (!mChannel) {
+            D("Failed to create an OpenGLES pipe channel!");
+            return;
+        }
     }
 
     void onGuestClose() override {
         // process died on the guest, cleanup gralloc memory on the host
-        android_cleanupProcGLObjects(m_uniqueId);
+        mChannel->stop();
+        // Make sure there's no operation scheduled for this pipe instance to
+        // run on the main thread.
+        abortPendingOperation();
+        delete this;
     }
     unsigned onGuestPoll() const override {
         return PIPE_POLL_IN | PIPE_POLL_OUT;
@@ -62,6 +110,18 @@ public:
     }
     int onGuestSend(const AndroidPipeBuffer* buffers,
                             int numBuffers) override {
+
+        //send the puid to remote render, so that the puid refcount ++ in remote
+        ChannelBuffer outBuffer;
+        outBuffer.resize_noinit(sizeof(GLCommandPacketSetPuid));
+        GLCommandPacketSetPuid * ptr = (GLCommandPacketSetPuid*)(outBuffer.data());
+        ptr->opcode = 10033;
+        ptr->len = sizeof(GLCommandPacketSetPuid) - sizeof(GLCommandPacketSetPuid::flag);
+        ptr->puid = m_uniqueId;
+
+        // Send it through the channel.
+        mChannel->tryWrite(std::move(outBuffer));
+        
         // The guest is supposed to send us a confirm code first. The code is
         // 100 (4 byte integer).
         assert(buffers[0].size >= 4);
@@ -79,6 +139,11 @@ private:
     // Please change it if you ever have a use case that exhausts them
     uint64_t m_uniqueId;
     static std::atomic_ullong s_headId;
+
+    // A RenderChannel pointer used for communication.
+    RenderChannelPtr mChannel;
+
+    bool mHasSetPuid;
 };
 
 std::atomic_ullong GLProcessPipe::s_headId(0);
