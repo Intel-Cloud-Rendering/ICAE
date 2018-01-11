@@ -112,15 +112,19 @@ public:
                             int numBuffers) override {
 
         //send the puid to remote render, so that the puid refcount ++ in remote
-        ChannelBuffer outBuffer;
-        outBuffer.resize_noinit(sizeof(GLCommandPacketSetPuid));
-        GLCommandPacketSetPuid * ptr = (GLCommandPacketSetPuid*)(outBuffer.data());
-        ptr->opcode = 10033;
-        ptr->len = sizeof(GLCommandPacketSetPuid) - sizeof(GLCommandPacketSetPuid::flag);
-        ptr->puid = m_uniqueId;
+        if (!mHasSetPuid) {
+            ChannelBuffer outBuffer;
+            outBuffer.resize_noinit(sizeof(GLCommandPacketSetPuid));
+            GLCommandPacketSetPuid * ptr = (GLCommandPacketSetPuid*)(outBuffer.data());
+            ptr->opcode = 10033;
+            ptr->len = sizeof(GLCommandPacketSetPuid) - sizeof(GLCommandPacketSetPuid::flag);
+            ptr->puid = m_uniqueId;
 
-        // Send it through the channel.
-        mChannel->tryWrite(std::move(outBuffer));
+            // Send it through the channel.
+            mChannel->tryWrite(std::move(outBuffer));
+
+            mHasSetPuid = true;
+        }
         
         // The guest is supposed to send us a confirm code first. The code is
         // 100 (4 byte integer).
