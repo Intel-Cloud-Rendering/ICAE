@@ -363,7 +363,7 @@ bool RemoteRenderChannel::onNetworkSndDataHeadReady(PagePacketHead& head, size_t
     }
 
     ssize_t retHead = android::base::socketSend(mSocket,
-                            &head + *pOffset, PAGE_PACKET_HEAD_LEN - *pOffset);
+                            (char *)&head + *pOffset, PAGE_PACKET_HEAD_LEN - *pOffset);
 
     if (retHead < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
