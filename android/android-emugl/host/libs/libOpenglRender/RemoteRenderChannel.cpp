@@ -12,7 +12,7 @@ intptr_t RemoteRenderChannel::main() {
     bool unKnownSizeDataReady = false;
 
     struct epoll_event events[1];
-    
+
     while (mIsWorking.load()) {
 
         int ret = ::epoll_wait(mEpollFD, events, 1, 20);
@@ -30,11 +30,11 @@ intptr_t RemoteRenderChannel::main() {
                 break;
             }
         }
-        
-        if ((events[0].events & EPOLLERR) ||  
+
+        if ((events[0].events & EPOLLERR) ||
               (events[0].events & EPOLLHUP) ||
-              (events[0].events & EPOLLRDHUP)) {  
-              //printf("found a connection exited\n");  
+              (events[0].events & EPOLLRDHUP)) {
+              //printf("found a connection exited\n");
               exitChannel();
         } else if (events[0].events & EPOLLIN) {
             if (!mUpStream) {
@@ -52,7 +52,7 @@ intptr_t RemoteRenderChannel::main() {
             while (1) {
                 if (readBuf == NULL) {
                     rwLen = 0;
-                    
+
                     if (mWantReadSize <= 0) {
                         // in this case, data from peer arrived before decoding
                         // thus, we cannot know the recving data size
@@ -98,7 +98,7 @@ intptr_t RemoteRenderChannel::main() {
                 }
             }
 
-           
+
         } else if (events[0].events & EPOLLOUT) {
             while (1) {//loop due to set EPOLLET
                 if (!curPage) {
@@ -107,7 +107,7 @@ intptr_t RemoteRenderChannel::main() {
                         modConnection(false);
                         break;
                     }
-                        
+
                     curPage = mPendingPages.front();
                     mPendingPages.pop_front();
                     lock.unlock();
@@ -120,7 +120,7 @@ intptr_t RemoteRenderChannel::main() {
 
                     rwLen = 0;
                 }
-                
+
                 if (isHeadSending) {
                     if (onNetworkSndDataHeadReady(head, &rwLen)) {
                         if (rwLen == PAGE_PACKET_HEAD_LEN) {
@@ -140,7 +140,7 @@ intptr_t RemoteRenderChannel::main() {
                         curPage.reset();
                     } else
                         break;
-                        
+ 
                 } else {
                     exitChannel();
                     assert(0);
@@ -209,7 +209,7 @@ void RemoteRenderChannel::modConnection(bool askWrite)
 {
     if (mSocket <= 0)
         return;
-    
+
     struct epoll_event ev;
 
     ev.data.fd = mSocket;
@@ -275,11 +275,6 @@ void RemoteRenderChannel::exitChannel() {
     mIsWorking.store(false);
 
     ::epoll_ctl(mEpollFD, EPOLL_CTL_DEL, mSocket, NULL);
-    
-    android::base::socketShutdownWrites(mSocket);
-    android::base::socketShutdownReads(mSocket);
-    android::base::socketClose(mSocket);
-    mSocket = -1;
 }
 
 void RemoteRenderChannel::closeChannel() {
@@ -291,6 +286,12 @@ void RemoteRenderChannel::closeChannel() {
         ::close(mEpollFD);
 
     mEpollFD = -1;
+
+    android::base::socketShutdownWrites(mSocket);
+    android::base::socketShutdownReads(mSocket);
+    android::base::socketClose(mSocket);
+    mSocket = -1;
+
 }
 
 void RemoteRenderChannel::onHostSocketEvent(unsigned events) {
@@ -341,7 +342,7 @@ bool RemoteRenderChannel::onNetworkRecvDataReady(char * buf, size_t * pOffset, s
     *pOffset += readLen;
 
     //printf("0x%lx %s : recv %d\n", android::base::getCurrentThreadId(), __func__, (int)readLen);
-    
+
     return true;
 }
 
@@ -355,7 +356,6 @@ bool RemoteRenderChannel::readChannel(size_t wantReadLen) {
     //modConnection(false);
 
     return true;
-    
 }
 
 bool RemoteRenderChannel::onNetworkSndDataHeadReady(PagePacketHead& head, size_t * pOffset) {
@@ -500,7 +500,7 @@ bool RemoteRenderChannel::onNetworkDataPageReady(std::shared_ptr<BufferPage> pag
                 break;
         }
     }
-    
+
     printf("0x%lx %s : send %d + %d\n", android::base::getCurrentThreadId(), __func__, (int)PAGE_PACKET_HEAD_LEN, (int)(page->writePos() - page->beginPos()));
     return true;
 }
