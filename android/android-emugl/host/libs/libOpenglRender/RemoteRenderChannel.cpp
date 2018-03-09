@@ -2,6 +2,9 @@
 
 namespace emugl {
 
+#define EMUGL_DEBUG_LEVEL 0
+#include "emugl/common/debug.h"
+
 intptr_t RemoteRenderChannel::main() {
     PagePacketHead head;
     size_t rwLen = 0;
@@ -58,7 +61,7 @@ intptr_t RemoteRenderChannel::main() {
                         // thus, we cannot know the recving data size
                         // make a assumtion first, use a default buffer to receive the data
                         // then update the received data size later.
-                        printf("unknow size data ready, possible hang up occur !!!!!!!!!!!!!\n");
+                        D("unknow size data ready, possible hang up occur !!!!!!!!!!!!!\n");
                         unKnownSizeDataReady = true;
                         readBufSize = 512; //because channel buffer default size is 512
                     } else {
@@ -153,7 +156,7 @@ intptr_t RemoteRenderChannel::main() {
     // if need, enable the following code to send a packet close message to remote render
     // currently, remote can close the renderthread by detecting the socket disconnection
     //notifyCloseToPeer();
-    printf("exit remote render channel thread\n");
+    DD("exit remote render channel thread\n");
     return 0;
 }
 
@@ -163,19 +166,19 @@ bool RemoteRenderChannel::initChannel(size_t queueSize) {
     // Add Tcp Channel for comunication
     const char* render_server_hostname = getenv("render_server_hostname");
     if (!render_server_hostname) {
-        fprintf(stdout, "Cannot find render server hostname\n");
+        D("Cannot find render server hostname\n");
         render_server_hostname = "127.0.0.1";
     }
     const char* render_server_port = getenv("render_server_port");
     if (!render_server_port) {
-        fprintf(stdout, "Cannot find render server port\n");
+        D("Cannot find render server port\n");
         render_server_port = "23432";
     }
-    printf("new connection %s : %s\n", render_server_hostname, render_server_port);
+    DD("new connection %s : %s\n", render_server_hostname, render_server_port);
 
     int socket = android::base::socketTcp4Client(render_server_hostname, atoi(render_server_port));
     if (socket == -1) {
-        fprintf(stderr, "%s: cannot connect to rendering server.(%s)\n", __func__, errno_str);
+        D("%s: cannot connect to rendering server.(%s)\n", __func__, errno_str);
         return false;
     }
 

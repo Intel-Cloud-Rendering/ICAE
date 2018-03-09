@@ -77,12 +77,12 @@ intptr_t RenderThread::main() {
     // Add Tcp Channel for comunication
     const char* render_server_hostname = getenv("render_server_hostname");
     if (!render_server_hostname) {
-        fprintf(stdout, "Cannot find render server hostname\n");
+        D("Cannot find render server hostname\n");
         render_server_hostname = "127.0.0.1";
     }
     const char* render_server_port = getenv("render_server_port");
     if (!render_server_port) {
-        fprintf(stdout, "Cannot find render server port\n");
+        D("Cannot find render server port\n");
         render_server_port = "23432";
     }
 
@@ -262,7 +262,7 @@ intptr_t RenderThread::main() {
     FrameBuffer::getFB()->drainWindowSurface();
     FrameBuffer::getFB()->drainRenderContext();
 
-    printf("Exited a RenderThread @%p\n", this);
+    DD("Exited a RenderThread @%p\n", this);
 
     return 0;
 }
