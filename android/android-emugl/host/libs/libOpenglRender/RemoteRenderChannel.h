@@ -224,7 +224,6 @@ private:
             if (mPageCount > (8 * 1024 / 4)) {
                 printf("page queue is full\n");
                 assert(0);
-                return std::shared_ptr<BufferPage>();
             }
             return page;
         }
