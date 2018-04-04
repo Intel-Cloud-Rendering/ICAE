@@ -83,10 +83,6 @@ include $(EMUGL_PATH)/host/libs/Translator/GLcommon/Android.mk
 include $(EMUGL_PATH)/host/libs/Translator/GLES_CM/Android.mk
 include $(EMUGL_PATH)/host/libs/Translator/GLES_V2/Android.mk
 include $(EMUGL_PATH)/host/libs/Translator/EGL/Android.mk
-include $(EMUGL_PATH)/host/libs/TranslatorFE/GLcommon/Android.mk
-include $(EMUGL_PATH)/host/libs/TranslatorFE/GLES_CM/Android.mk
-include $(EMUGL_PATH)/host/libs/TranslatorFE/GLES_V2/Android.mk
-include $(EMUGL_PATH)/host/libs/TranslatorFE/EGL/Android.mk
 include $(EMUGL_PATH)/host/libs/libOpenGLESDispatch/Android.mk
 
 # Host shared libraries
