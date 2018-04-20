@@ -83,6 +83,12 @@ public:
             LoopbackMode mode = kIPv4AndIPv6,
             Looper* looper = nullptr);
 
+    static std::unique_ptr<AsyncSocketServer> createTcpAnyServer(
+            int port,
+            ConnectCallback connectCallback,
+            LoopbackMode mode = kIPv4AndIPv6,
+            Looper* looper = nullptr);
+
 protected:
     // No default constructor, use one of the static createXXX() method to
     // create a new instance.

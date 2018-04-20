@@ -64,6 +64,15 @@ int socketTcp4LoopbackServer(int port);
 // Return new socket on success, or -1/errno on error.
 int socketTcp6LoopbackServer(int port);
 
+// Bind and listen on TCP |port| on loopback interface (i.e. 127.0.0.1).
+// Return new socket on success, or -1/errno on error.
+int socketTcp4AnyServer(int port);
+
+// Bind and listen on TCP |port| on IPv6 loopback interface (i.e. ::1).
+// Return new socket on success, or -1/errno on error.
+int socketTcp6AnyServer(int port);
+
+
 // Connect to TCP |port| on loopback interface (i.e. 127.0.0.1).
 // Return new socket on success, or -1/errno on error.
 int socketTcp4LoopbackClient(int port);

@@ -231,6 +231,22 @@ union SockAddressStorage {
         }
     }
 
+    void initAnyFor(int port, int domain) {
+        if (domain == AF_INET) {
+            memset(&inet, 0, sizeof(inet));
+            inet.sin_family = AF_INET;
+            inet.sin_port = htons(port);
+            inet.sin_addr.s_addr = htonl(INADDR_ANY);
+        } else if (domain == AF_INET6) {
+            memset(&in6, 0, sizeof(in6));
+            in6.sin6_family = AF_INET6;
+            in6.sin6_port = htons(port);
+            in6.sin6_addr = IN6ADDR_ANY_INIT;
+        } else {
+            CHECK(false) << "Invalid domain " << domain;
+        }
+    }
+
     // Initialize from a generic BSD socket address.
     // |from| points to a sockaddr_in or sockaddr_in6 structure.
     // |fromLen| is its length in bytes.
@@ -585,12 +601,43 @@ static int socketTcpLoopbackServerFor(int port, int domain) {
     return s.release();
 }
 
+static int socketTcpServerFor(int port, int domain) {
+    ScopedSocket s(socketCreateTcpFor(domain));
+    if (s.get() < 0) {
+        DPLOG(ERROR) << "Could not create TCP socket\n";
+        return -1;
+    }
+
+    socketSetXReuseAddr(s.get());
+
+    SockAddressStorage addr;
+    addr.initAnyFor(port, domain);
+    
+    if (socketTcpBindAndListen(s.get(), &addr) < 0) {
+        DPLOG(ERROR) << "Could not bind to TCP loopback port "
+                     << port
+                     << "\n";
+        return -1;
+    }
+
+    return s.release();
+}
+
+
 int socketTcp4LoopbackServer(int port) {
     return socketTcpLoopbackServerFor(port, AF_INET);
 }
 
 int socketTcp6LoopbackServer(int port) {
     return socketTcpLoopbackServerFor(port, AF_INET6);
+}
+
+int socketTcp4AnyServer(int port) {
+    return socketTcpServerFor(port, AF_INET);
+}
+
+int socketTcp6AnyServer(int port) {
+    return socketTcpServerFor(port, AF_INET6);
 }
 
 static int socketTcpLoopbackClientFor(int port, int domain) {

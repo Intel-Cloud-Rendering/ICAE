@@ -177,5 +177,61 @@ std::unique_ptr<AsyncSocketServer> AsyncSocketServer::createTcpLoopbackServer(
     return std::unique_ptr<AsyncSocketServer>(result);
 }
 
+// static
+std::unique_ptr<AsyncSocketServer> AsyncSocketServer::createTcpAnyServer(
+        int port,
+        ConnectCallback connectCallback,
+        LoopbackMode mode,
+        Looper* looper) {
+    if (!looper) {
+        looper = ThreadLooper::get();
+    }
+    ScopedSocket sock4;
+    ScopedSocket sock6;
+
+    // If |port| is 0, we let the system find a random free port, but
+    // in the case of kIPv4AndIPv6, we need to ensure that it is possible
+    // to bind to both ports. Loop a few times to ensure that this is the
+    // case.
+    int tries = (port == 0 && mode == kIPv4AndIPv6) ? 5 : 1;
+    int port0 = port;
+    bool success = false;
+    for (; tries > 0; tries--) {
+        port = port0;
+        success = true;
+        if ((mode & kIPv4) != 0) {
+            sock4.reset(socketTcp4AnyServer(port));
+            if (!sock4.valid()) {
+                if (!(mode & kIPv4Optional)) {
+                    success = false;
+                }
+            } else if (!port) {
+                port = socketGetPort(sock4.get());
+            }
+        }
+        if ((mode & kIPv6) != 0) {
+            sock6.reset(socketTcp6AnyServer(port));
+            if (!sock6.valid()) {
+                if (!(mode & kIPv6Optional)) {
+                    success = false;
+                }
+            } else if (!port) {
+                port = socketGetPort(sock6.get());
+            }
+        }
+
+        if (success) { break; }
+    }
+
+    AsyncSocketServer* result = nullptr;
+
+    if (success && (sock4.valid() || sock6.valid())) {
+        result = new BaseSocketServer(looper, port, connectCallback,
+                                      sock4.release(), sock6.release());
+    }
+    return std::unique_ptr<AsyncSocketServer>(result);
+}
+
+
 }  // namespace base
 }  // namespace android

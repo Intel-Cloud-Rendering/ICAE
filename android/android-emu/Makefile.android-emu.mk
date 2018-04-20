@@ -355,6 +355,10 @@ LOCAL_SRC_FILES := \
     android/opengl/logger.cpp \
     android/opengl/OpenglEsPipe.cpp \
     android/opengles.cpp \
+    android/remote_input_server.cpp \
+    android/remoteinput/RemoteInputListener.cpp \
+    android/remoteinput/RemoteInputDataHandler.cpp \
+    android/remoteinput/RemoteInputDataConnection.cpp \
     android/openssl-support.cpp \
     android/process_setup.cpp \
     android/protobuf/DelimitedSerialization.cpp \

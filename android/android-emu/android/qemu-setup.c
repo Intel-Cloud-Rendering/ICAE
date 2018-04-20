@@ -25,6 +25,8 @@
 #include "android/hw-fingerprint.h"
 #include "android/hw-sensors.h"
 #include "android/opengles-pipe.h"
+#include "android/remote_input_server.h"
+
 #include "android/proxy/proxy_setup.h"
 #include "android/utils/debug.h"
 #include "android/utils/ipaddr.h"
@@ -380,6 +382,7 @@ bool android_emulation_setup(const AndroidConsoleAgents* agents) {
         }
     }
 
+    android_remote_input_server_init(30040, agents);
 
     agents->telephony->initModem(android_base_port);
 
