@@ -23,7 +23,7 @@
 
 ANDROID_BEGIN_HEADER
 
-int android_remote_input_server_init(int port, const AndroidConsoleAgents* agents);
+int android_remote_input_server_init(const AndroidConsoleAgents* agents);
 void android_remote_input_server_undo_init(void);
 void android_remote_input_service_init(void);
 

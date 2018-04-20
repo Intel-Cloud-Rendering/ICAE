@@ -74,18 +74,6 @@ intptr_t RenderThread::main() {
         return 0;
     }
 
-    // Add Tcp Channel for comunication
-    const char* render_server_hostname = getenv("render_server_hostname");
-    if (!render_server_hostname) {
-        D("Cannot find render server hostname\n");
-        render_server_hostname = "127.0.0.1";
-    }
-    const char* render_server_port = getenv("render_server_port");
-    if (!render_server_port) {
-        D("Cannot find render server port\n");
-        render_server_port = "23432";
-    }
-
     // |flags| used to have something, now they're not used.
     (void)flags;
 

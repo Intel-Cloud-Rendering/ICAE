@@ -382,7 +382,7 @@ bool android_emulation_setup(const AndroidConsoleAgents* agents) {
         }
     }
 
-    android_remote_input_server_init(30040, agents);
+    android_remote_input_server_init(agents);
 
     agents->telephony->initModem(android_base_port);
 

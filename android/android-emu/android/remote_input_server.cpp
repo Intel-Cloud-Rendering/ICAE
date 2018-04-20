@@ -45,9 +45,22 @@ android::base::LazyInstance<Globals> sGlobals = LAZY_INSTANCE_INIT;
 
 }  // namespace
 
-int android_remote_input_server_init(int port, const AndroidConsoleAgents* agents) {
+int android_remote_input_server_init(const AndroidConsoleAgents* agents) {
     auto globals = sGlobals.ptr();
-    if (!globals->hostListener.reset(port, agents)) {
+
+    // Add Tcp Channel for comunication
+    const char* remote_input_server_hostname = getenv("remote_input_server_hostname");
+    if (!remote_input_server_hostname) {
+        printf("Cannot find remote input server hostname\n");
+        remote_input_server_hostname = "127.0.0.1";
+    }
+    const char* remote_input_server_port = getenv("remote_input_server_port");
+    if (!remote_input_server_port) {
+        printf("Cannot find remote input port\n");
+        remote_input_server_port = "30040";
+    }
+    
+    if (!globals->hostListener.reset(atoi(remote_input_server_port), agents)) {
         return -1;
     }
 
