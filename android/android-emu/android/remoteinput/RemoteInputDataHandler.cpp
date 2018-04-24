@@ -139,6 +139,13 @@ void RemoteInputDataHandler::StartHandler() {
         if (slot_index < 0) {
             if (inputPacket->event == MOUSE_EVENT_DOWN) {
 
+                mLastTimestamp = inputPacket->timestamp;
+
+                struct timeval curtimeval;
+                gettimeofday(&curtimeval, NULL);
+                uint64_t curtiming = curtimeval.tv_sec * 1000 * 1000 + curtimeval.tv_usec;
+                mLastSentTiming = curtiming;
+
                 int slot_avail_index = _mtsstate_get_available_pointer_index(tracked_pointers);
  
                 tracked_pointers[slot_avail_index].tracking_id = inputPacket->tracking_id;
@@ -160,8 +167,32 @@ void RemoteInputDataHandler::StartHandler() {
             } else {
                 assert(0);
                 return;
-             }
+            }
+
+            printf("mLastTimestamp = %lld, mLastSentTiming = %lld\n", (long long int)mLastTimestamp, (long long int)mLastSentTiming);
         } else {
+			uint64_t needsleeptime = 0;
+            struct timeval curtimeval;
+            gettimeofday(&curtimeval, NULL);
+            uint64_t curtiming = curtimeval.tv_sec * 1000 * 1000 + curtimeval.tv_usec;
+            
+            if (mLastSentTiming != 0 && mLastTimestamp != 0) {
+                
+                uint64_t senttiming_offset = 0;
+                if (curtiming > mLastSentTiming) {
+                    senttiming_offset = curtiming - mLastSentTiming;
+                }
+                uint64_t timestamp_offset = 0;
+                if (inputPacket->timestamp > mLastTimestamp){
+                    timestamp_offset = inputPacket->timestamp - mLastTimestamp;
+                }
+
+                if (timestamp_offset > senttiming_offset) {
+                    needsleeptime = timestamp_offset - senttiming_offset;
+                    usleep(needsleeptime);
+                }
+            }
+
             if (inputPacket->event == MOUSE_EVENT_UP) {
                 tracked_pointer_num --;
                 tracked_pointers[slot_index].tracking_id = MTS_POINTER_UP;
@@ -170,10 +201,16 @@ void RemoteInputDataHandler::StartHandler() {
                 tracked_pointers[slot_index].pressure = 0;
 
                 if (tracked_pointer_num == 0) {
+
+                    mLastTimestamp = 0;
+                    mLastSentTiming = 0;
                     //first finger
                     mUserEventAgent->sendMouseEvent(inputPacket->x, inputPacket->y, 0, 0);
                 } else if (tracked_pointer_num == 1) {
                     //secondary finger
+                    mLastTimestamp = inputPacket->timestamp;
+		            mLastSentTiming = curtiming + needsleeptime;
+                    
                     mUserEventAgent->sendMouseEvent(inputPacket->x, inputPacket->y, 0, 4);
                 } else {
                     assert(0);
@@ -181,10 +218,16 @@ void RemoteInputDataHandler::StartHandler() {
             } else if (inputPacket->event == MOUSE_EVENT_MOVE) {
                 tracked_pointers[slot_index].x = inputPacket->x;
                 tracked_pointers[slot_index].y = inputPacket->y;
+
+                mLastTimestamp = inputPacket->timestamp;
+	            mLastSentTiming = curtiming + needsleeptime;
+                
                 mUserEventAgent->sendMouseEvent(inputPacket->x, inputPacket->y, 0, 1);
             } else {
                 assert(0);
             }
+
+            printf("mLastTimestamp = %lld, mLastSentTiming = %lld\n", (long long int)mLastTimestamp, (long long int)mLastSentTiming);
         }
     }
 }

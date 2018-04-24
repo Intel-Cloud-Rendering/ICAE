@@ -51,14 +51,13 @@ public:
         mUserEventAgent(NULL),
         mEpollFD(-1),
         mIsWorking(false),
-        mLastTimestamp(0)
+        mLastTimestamp(0),
+        mLastSentTiming(0)
          {};
 
     virtual intptr_t main() override {
         RemoteInputPacket curInputPacket;
         ssize_t packetStartPos = 0;
-        uint64_t lasttimestamp = 0;
-        uint64_t lastsenttiming = 0;
 
         struct epoll_event events[MAX_HANDLE_FD_SIZE];
         
@@ -72,8 +71,8 @@ public:
                       (events[i].events & EPOLLHUP) ||
                       (events[i].events & EPOLLRDHUP)) {
                       printf("found a connection exited\n");
-                      lasttimestamp = 0;
-                      lastsenttiming = 0;
+                      mLastSentTiming = 0;
+                      mLastTimestamp = 0;
                       removeConnection(events[i].data.fd);
                       continue;  
                 } else if (events[i].events & EPOLLIN) {
@@ -104,30 +103,6 @@ public:
                         if (readSize < 0)
                             break;
                         else if (readSize == (ssize_t)REMOTE_INPUT_PACKET_LEN - packetStartPos) {
-                    		struct timeval curtimeval;
-                            gettimeofday(&curtimeval, NULL);
-                            uint64_t curtiming = curtimeval.tv_sec * 1000 * 1000 + curtimeval.tv_usec;
-
-                            uint64_t needsleeptime = 0;
-
-                            if (lastsenttiming != 0 && lasttimestamp != 0) {
-                                uint64_t senttiming_offset = 0;
-                                if (curtiming > lastsenttiming) {
-                                    senttiming_offset = curtiming > lastsenttiming;
-                                }
-                                uint64_t timestamp_offset = 0;
-                                if (curInputPacket.timestamp > lasttimestamp){
-                                    timestamp_offset = curInputPacket.timestamp - lasttimestamp;
-                                }
-
-                                if (timestamp_offset > senttiming_offset) {
-                                    needsleeptime = timestamp_offset - senttiming_offset;
-                                    usleep(needsleeptime);
-                                }
-                            }
-
-                            lasttimestamp = curInputPacket.timestamp;
-                            lastsenttiming = curtiming + needsleeptime;
                             
                             consumeInputPacket(&curInputPacket);
                             
@@ -172,6 +147,7 @@ private:
     bool mIsWorking;
 
     uint64_t mLastTimestamp;
+    uint64_t mLastSentTiming;
 
     std::unordered_map<int, std::shared_ptr<RemoteInputDataConnection> > mConnectionList;
     
