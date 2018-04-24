@@ -91,7 +91,7 @@ void goldfish_enqueue_event(GoldfishEvDevState *s,
     }
 
     if (enqueued + 3 > MAX_EVENTS) {
-        fprintf(stderr, "##KBD: Full queue, lose event\n");
+        fprintf(stderr, "##KBD: Full queue %d, lose event\n", s->state);
         return;
     }
 

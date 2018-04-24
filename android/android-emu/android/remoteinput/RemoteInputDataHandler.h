@@ -38,7 +38,7 @@ typedef struct _RemoteInputPacket  {
     int x : 16;
     int y : 16;
     MOUSE_EVENT_TYPE event : 8;
-    int tracking_id : 8;
+    int tracking_id : 32;
     uint64_t timestamp : 64;
 } __attribute__ ((packed)) RemoteInputPacket;
 
