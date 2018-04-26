@@ -90,6 +90,11 @@ void goldfish_enqueue_event(GoldfishEvDevState *s,
         enqueued += MAX_EVENTS;
     }
 
+    if (enqueued + 200 > MAX_EVENTS) {
+	qemu_irq_lower(s->irq);
+	qemu_irq_raise(s->irq);
+    }
+
     if (enqueued + 3 > MAX_EVENTS) {
         fprintf(stderr, "##KBD: Full queue %d, lose event\n", s->state);
         return;
