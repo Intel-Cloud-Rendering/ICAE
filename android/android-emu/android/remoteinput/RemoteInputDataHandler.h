@@ -109,7 +109,7 @@ public:
                             packetStartPos = 0;
                             continue; // perhaps still data exist in receive buffer, try next packet
                         } else {
-                            printf("not a complete packet, keep receiving\n");
+                            //printf("not a complete packet, keep receiving\n");
                             // no data in receive buffer, exit the loop, wait for next epoll event
                             packetStartPos += readSize;
                             break;

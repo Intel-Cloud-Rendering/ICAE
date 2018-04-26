@@ -137,7 +137,9 @@ void RemoteInputDataHandler::StartHandler() {
     void RemoteInputDataHandler::consumeInputPacket(RemoteInputPacket * inputPacket) {
         const int slot_index = _mtsstate_get_pointer_index(tracked_pointers, inputPacket->tracking_id);
         if (slot_index < 0) {
+            //state idle or state in_action
             if (inputPacket->event == MOUSE_EVENT_DOWN) {
+                //state in_action
 
                 mLastTimestamp = inputPacket->timestamp;
 
@@ -165,13 +167,15 @@ void RemoteInputDataHandler::StartHandler() {
 	                assert(0);
 	            }
             } else {
+                //error state
                 assert(0);
                 return;
             }
 
-            printf("mLastTimestamp = %lld, mLastSentTiming = %lld\n", (long long int)mLastTimestamp, (long long int)mLastSentTiming);
+            //printf("mLastTimestamp = %lld, mLastSentTiming = %lld\n", (long long int)mLastTimestamp, (long long int)mLastSentTiming);
         } else {
-			uint64_t needsleeptime = 0;
+            //state in_action
+            uint64_t needsleeptime = 0;
             struct timeval curtimeval;
             gettimeofday(&curtimeval, NULL);
             uint64_t curtiming = curtimeval.tv_sec * 1000 * 1000 + curtimeval.tv_usec;
@@ -201,12 +205,14 @@ void RemoteInputDataHandler::StartHandler() {
                 tracked_pointers[slot_index].pressure = 0;
 
                 if (tracked_pointer_num == 0) {
+                    // will became state idle
 
                     mLastTimestamp = 0;
                     mLastSentTiming = 0;
                     //first finger
                     mUserEventAgent->sendMouseEvent(inputPacket->x, inputPacket->y, 0, 0);
                 } else if (tracked_pointer_num == 1) {
+                    // still be state in_action
                     //secondary finger
                     mLastTimestamp = inputPacket->timestamp;
 		            mLastSentTiming = curtiming + needsleeptime;
@@ -216,6 +222,7 @@ void RemoteInputDataHandler::StartHandler() {
                     assert(0);
                 }
             } else if (inputPacket->event == MOUSE_EVENT_MOVE) {
+                //state in_action
                 tracked_pointers[slot_index].x = inputPacket->x;
                 tracked_pointers[slot_index].y = inputPacket->y;
 
@@ -223,11 +230,12 @@ void RemoteInputDataHandler::StartHandler() {
 	            mLastSentTiming = curtiming + needsleeptime;
                 
                 mUserEventAgent->sendMouseEvent(inputPacket->x, inputPacket->y, 0, 1);
-            } else {
+            } else if (inputPacket->event == MOUSE_EVENT_DOWN) {
+                // got event down of same finger, ignore it
                 assert(0);
             }
 
-            printf("mLastTimestamp = %lld, mLastSentTiming = %lld\n", (long long int)mLastTimestamp, (long long int)mLastSentTiming);
+            //printf("mLastTimestamp = %lld, mLastSentTiming = %lld\n", (long long int)mLastTimestamp, (long long int)mLastSentTiming);
         }
     }
 }
