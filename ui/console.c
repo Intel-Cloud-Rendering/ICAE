@@ -33,6 +33,8 @@
 #include "trace.h"
 #include "exec/memory.h"
 
+#include <sys/time.h>
+
 #define DEFAULT_BACKSCROLL 512
 #define CONSOLE_CURSOR_PERIOD 500
 
@@ -2177,7 +2179,7 @@ static void qemu_chr_parse_vc(QemuOpts *opts, ChardevBackend *backend,
 }
 
 void kbd_mouse_event(int dx, int dy, int dz, int button_state) {
-
+    printf("kbd_mouse_event %d %d %d %d\n", dx, dy, dz, button_state);
     assert(active_console && qemu_console_is_graphic(active_console));
 
     static uint32_t bmap[INPUT_BUTTON__MAX] = {

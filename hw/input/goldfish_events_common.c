@@ -95,12 +95,9 @@ void goldfish_enqueue_event(GoldfishEvDevState *s,
         return;
     }
 
+    bool isEmptyQueue = false;
     if (s->first == s->last) {
-        if (s->state == STATE_LIVE) {
-            qemu_irq_raise(s->irq);
-        } else {
-            s->state = STATE_BUFFERED;
-        }
+        isEmptyQueue = true;
     }
 
     s->events[s->last] = type;
@@ -109,6 +106,14 @@ void goldfish_enqueue_event(GoldfishEvDevState *s,
     s->last = (s->last + 1) & (MAX_EVENTS-1);
     s->events[s->last] = value;
     s->last = (s->last + 1) & (MAX_EVENTS-1);
+
+    if (isEmptyQueue) {
+        if (s->state == STATE_LIVE) {
+            qemu_irq_raise(s->irq);
+        } else {
+            s->state = STATE_BUFFERED;
+        }
+    }
 
 }
 
